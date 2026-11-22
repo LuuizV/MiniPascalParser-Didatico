@@ -1,8 +1,9 @@
 'use strict';
 /** Processo principal: arquivos nativos e análise. Não expõe Node ao navegador. */
-const {app,BrowserWindow,ipcMain,dialog} = require('electron');
+const {app,BrowserWindow,ipcMain,dialog,shell} = require('electron');
 const fs=require('node:fs/promises'),path=require('node:path');
 const {analisar,modelo}=require('./core.cjs');
+const {createUpdateManager}=require('./update-manager.cjs');
 let win;
 const base=path.join(__dirname,'..');
 function init(){
@@ -15,6 +16,14 @@ function init(){
   win.webContents.on('will-navigate',e=>e.preventDefault());
 }
 app.whenReady().then(()=>{
+  const updater=app.isPackaged&&process.platform==='win32'&&!process.env.PORTABLE_EXECUTABLE_FILE&&!process.env.PORTABLE_EXECUTABLE_DIR
+    ? require('electron-updater').autoUpdater : null;
+  const updates=createUpdateManager({app,updater,send:s=>{if(win&&!win.isDestroyed())win.webContents.send('update-state',s);}});
+  ipcMain.handle('update-status',()=>updates.snapshot());
+  ipcMain.handle('update-check',()=>updates.check());
+  ipcMain.handle('update-download',()=>updates.download());
+  ipcMain.handle('update-install',()=>updates.install());
+  ipcMain.handle('update-open-releases',()=>shell.openExternal(updates.releaseUrl));
   ipcMain.handle('analyze',(_e,src)=>{if(typeof src!=='string'||src.length>500000)throw Error('Arquivo deve ter no máximo 500.000 caracteres.');return analisar(src);});
   ipcMain.handle('grammar',()=>modelo);
   ipcMain.handle('open-file',async()=>{
@@ -44,5 +53,6 @@ app.whenReady().then(()=>{
   });
   app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)init();});
   init();
+  updates.start();
 });
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});

@@ -1,13 +1,13 @@
 {
   "name": "minipascal-studio",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "private": true,
-  "description": "Ambiente visual de análise léxica e sintática SLR(1) em Electron, sem Java/Python em runtime",
+  "description": "Estúdio visual de compiladores SLR(1) com atualização via Releases do GitHub",
   "main": "src/main.cjs",
   "scripts": {
     "start": "electron .",
     "test": "node --test tests/*.test.cjs",
-    "check": "node --check src/main.cjs && node --check src/preload.cjs && node --check src/core.cjs && node --check src/renderer.js",
+    "check": "node --check src/main.cjs && node --check src/preload.cjs && node --check src/update-manager.cjs && node --check src/core.cjs && node --check src/renderer.js",
     "dist:win": "electron-builder --win nsis portable",
     "dist:linux": "electron-builder --linux AppImage"
   },
@@ -29,9 +29,39 @@
     ],
     "win": {
       "target": [
-        "nsis",
-        "portable"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "LuuizV",
+        "repo": "MiniPascalParser-Didatico",
+        "releaseType": "release"
+      }
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "artifactName": "MiniPascal-Studio-Setup-${version}-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "MiniPascal-Studio-Portable-${version}-${arch}.${ext}"
     }
+  },
+  "dependencies": {
+    "electron-updater": "6.8.11"
   }
 }
