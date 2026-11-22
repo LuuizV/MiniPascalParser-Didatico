@@ -16,7 +16,7 @@ const input=$('#codeInput');input.value=sample;
 let currentUpdate=null;
 function notify(message){const el=$('#toast');el.textContent=message;el.classList.add('visible');clearTimeout(notify.timer);notify.timer=setTimeout(()=>el.classList.remove('visible'),3000);}
 function status(message){$('#statusText').textContent=message;}
-function setDirty(flag){state.dirty=flag;$('#dirtyFlag').hidden=!flag;$('#fileStatus').textContent=flag?'Alterações não salvas':'Sem alterações';}
+function setDirty(flag){state.dirty=flag;$('#dirtyFlag').hidden=!flag;}
 function syntaxColor(code){
   const reg=/\/\*[\s\S]*?(?:\*\/|$)|"[^"\r\n]*"|'[^'\r\n]*'|\b(?:program|var|begin|end|integer|real|char|string|procedure|if|then|else|while|do|div|mod)\b|\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b|:=|<=|>=|<>|[+\-*\/=<>]/gi;
   let s='',from=0;
@@ -44,15 +44,15 @@ function refreshEditor(){
 }
 function scrollTogether(){const h=$('#codeHighlight'),lines=$('#lineNumbers');h.scrollTop=input.scrollTop;h.scrollLeft=input.scrollLeft;lines.scrollTop=input.scrollTop;}
 function cursorInfo(){let before=input.value.slice(0,input.selectionStart).split(/\r\n|\r|\n/),line=before.length,col=before.at(-1).length+1;$('#editorCaret').textContent=`Ln ${line}, Col ${col}`;}
-function changeSource(s,filename=null){input.value=s;if(filename){state.fileName=filename;$('#filename').textContent=filename;state.filePath=null;}state.selectedToken=-1;invalidate();refreshEditor();}
+function changeSource(s,filename=null){input.value=s;if(filename){state.fileName=filename;$('#filename').textContent=filename;$('#selectedExample').textContent=filename;state.filePath=null;}state.selectedToken=-1;invalidate();refreshEditor();}
 function invalidate(){pause();state.result=null;state.step=0;setDirty(true);updateStats();updateTimeline();renderInspector();}
-function updateStats(){const r=state.result;
+function updateStats(){const r=state.result;$('#summaryRow').hidden=!r;
   $('#statTokens').textContent=r?r.tokens.length:'—';$('#statSteps').textContent=r?r.passos.length:'—';$('#statStates').textContent=state.grammar?.states.length||130;
   $('#statResult').textContent=!r?'Pendente':r.aceito?'Aceito':'Rejeitado';$('#statResult').style.color=!r?'var(--text)':r.aceito?'#72e0b6':'#ffb6ac';
   const n=(r?.errosLexicos.length||0)+(r?.errosSintaticos.length||0);
   $('#statErrorCount').textContent=r?`${n} erro${n===1?'':'s'}`:'Executar análise';$('#navErrors').textContent=n;
 }
-function reportText(r){const a=[`MiniPascal Studio v5.1 — ${state.fileName}`,`ESTADOS=${r.estados}`,`ACEITO=${r.aceito}`];
+function reportText(r){const a=[`MiniPascal Studio v5.1.1 — ${state.fileName}`,`ESTADOS=${r.estados}`,`ACEITO=${r.aceito}`];
   for(const t of r.tokens)a.push(`TOK=<${t.lexema}, ${t.descricao}> [linha ${t.linha}, coluna ${t.coluna}]`);
   for(const e of r.errosLexicos)a.push(`LEX=Linha ${e.linha}, coluna ${e.coluna}: ${e.mensagem}${e.lexema?' ['+e.lexema+']':''}`);
   for(const e of r.errosSintaticos)a.push(`SYN=Linha ${e.linha}, coluna ${e.coluna}: ${e.mensagem}`);
@@ -60,7 +60,7 @@ function reportText(r){const a=[`MiniPascal Studio v5.1 — ${state.fileName}`,`
   return a.join('\n')+'\n';
 }
 async function runAnalysis(){pause();if(!window.studio){notify('Abra a aplicação no Electron para executar o analisador.');return;}
-  try{status('Executando análise...');const r=await window.studio.analyze(input.value);state.result=r;state.step=0;state.selectedToken=-1;updateStats();updateTimeline();renderInspector();refreshEditor();status(r.aceito?'Programa aceito pela gramática':`Análise concluída · ${r.errosLexicos.length+r.errosSintaticos.length} erro(s)`);}
+  try{status('Executando análise...');const r=await window.studio.analyze(input.value);state.result=r;state.step=0;state.selectedToken=-1;updateStats();updateTimeline();setMode('dynamic','simulator');refreshEditor();status(r.aceito?'Programa aceito pela gramática':`Análise concluída · ${r.errosLexicos.length+r.errosSintaticos.length} erro(s)`);}
   catch(err){status('Não foi possível analisar');notify(err.message);}}
 function explain(step){const d=step?.detalhes;if(!d)return 'Sem etapas registradas.';
   if(d.tipo==='SHIFT')return `O Parser consumiu <strong>${escapeHTML(d.token.lexema)}</strong> e empilhou o estado <strong>${d.destinoShift}</strong> pela tabela ACTION.`;
@@ -73,7 +73,7 @@ function updateTimeline(){const r=state.result,steps=r?.passos||[],current=steps
   $('#timelineAction').textContent=current?current.acao:'Aguardando execução';
   const range=$('#stepRange');range.disabled=!steps.length;range.min=0;range.max=Math.max(0,steps.length-1);range.value=state.step;
   $('#timelineTicks').innerHTML=steps.length?`<span>Passo 1</span><span>${Math.ceil(steps.length/2)}</span><span>Passo ${steps.length}</span>`:'';
-  $('#actionExplain').innerHTML=current?explain(current):'Clique em <strong>Analisar código</strong> ou pressione <kbd>Ctrl + Enter</kbd> para começar.';
+  $('#actionExplain').innerHTML=current?explain(current):'Execute uma análise para visualizar as etapas.';
   $('#stepBadge').textContent=current?`Estado ${current.detalhes.estado}`:'Aguardando análise';
   for(const [id,cond] of [['#btnFirst',!steps.length||state.step===0],['#btnPrev',!steps.length||state.step===0],['#btnNext',!steps.length||state.step>=steps.length-1],['#btnLast',!steps.length||state.step>=steps.length-1],['#btnPlay',steps.length<2]])$(id).disabled=cond;
   $('#btnPlay').textContent=state.playing?'Ⅱ':'▶';
@@ -81,7 +81,30 @@ function updateTimeline(){const r=state.result,steps=r?.passos||[],current=steps
 function setStep(idx){const steps=state.result?.passos||[];if(!steps.length)return;state.step=Math.max(0,Math.min(steps.length-1,idx));state.selectedToken=-1;updateTimeline();renderInspector();refreshEditor();}
 function pause(){if(state.timer)clearInterval(state.timer);state.timer=null;state.playing=false;$('#btnPlay').textContent='▶';}
 function play(){const total=state.result?.passos.length||0;if(!total)return;if(state.playing){pause();return;}if(state.step>=total-1)setStep(0);state.playing=true;updateTimeline();state.timer=setInterval(()=>{if(state.step>=total-1){pause();updateTimeline();return;}setStep(state.step+1);},Number($('#speed').value)||650);}
-function setView(tab){state.tab=tab;$$('.tab').forEach(e=>e.classList.toggle('active',e.dataset.tab===tab));$$('.nav-item').forEach(e=>e.classList.toggle('active',e.dataset.view===tab));renderInspector();}
+/** Três áreas objetivas: editor, acompanhamento dinâmico e referência estática. */
+let viewMode='code';
+const isDynamic=tab=>tab==='simulator'||tab==='tree';
+const isStatic=tab=>tab==='tokens'||tab==='grammar'||tab==='errors';
+function setMode(mode,tab){
+  if(!['code','dynamic','static'].includes(mode))return;
+  viewMode=mode;
+  if(mode==='dynamic')state.tab=isDynamic(tab)?tab:(isDynamic(state.tab)?state.tab:'simulator');
+  if(mode==='static')state.tab=isStatic(tab)?tab:(isStatic(state.tab)?state.tab:'tokens');
+  $$('.studio-view').forEach(el=>{el.hidden=el.id!=='view-'+mode;});
+  $$('.nav-item').forEach(el=>{const active=el.dataset.mode===mode;el.classList.toggle('active',active);if(active)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});
+  $('#workspaceTitle').textContent={code:'Código',dynamic:'Análise dinâmica',static:'Dados estáticos'}[mode];
+  if(mode!=='code'){
+    $(mode==='dynamic'?'#dynamicSlot':'#staticSlot').appendChild($('#inspectorPane'));
+    $('#inspectorPane').dataset.group=mode;
+    $$('.tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===state.tab));
+    renderInspector();
+    if(mode==='dynamic')updateTimeline();
+  }
+  closeExamples();
+}
+function setView(tab){setMode(isDynamic(tab)?'dynamic':'static',tab);}
+function closeExamples(){const menu=$('#examplesMenu');menu.hidden=true;$('#btnExamples').setAttribute('aria-expanded','false');}
+
 function pills(items){return items.map(x=>`<span class="chip">${escapeHTML(x)}</span>`).join('');}
 function detailStep(){const trace=state.result?.passos[state.step];if(!trace)return '<div class="empty"><div class="empty-symbol">⇄</div><h3>Nenhum passo registrado</h3><p>Faça uma análise sintática para percorrer as operações.</p></div>';
   const d=trace.detalhes,p=state.grammar?.productions[d.producao],kind=d.tipo.toLowerCase();
@@ -91,7 +114,7 @@ function detailStep(){const trace=state.result?.passos[state.step];if(!trace)ret
     <div class="minor-label">PILHA DO ANALISADOR</div><div class="stack-chips"><span class="chip state">0</span>${d.simbolos.map((s,i)=>`<span class="chip">${escapeHTML(s)}</span><span class="chip state">${d.estados[i+1]}</span>`).join('')}</div>
     <div class="minor-label" style="margin-top:11px">ENTRADA RESTANTE</div><div class="grammar-box">${escapeHTML(trace.entrada)}</div>
     ${p?`<div class="minor-label" style="margin-top:13px">PRODUÇÃO UTILIZADA</div><div class="grammar-box">[${p.id}] ${escapeHTML(p.lhs)} → ${escapeHTML(p.rhs.join(' ')||'ε')}</div>`:''}
-    <div class="tip-card">✦ &nbsp; ${explain(trace)}</div>`;
+    `;
 }
 function rowToken(t,i){return `<tr data-token="${i}" class="${state.selectedToken===i?'selected':''}"><td class="mono">${i+1}</td><td class="mono">${escapeHTML(t.lexema)}</td><td>${escapeHTML(t.descricao)}</td><td class="mono">${escapeHTML(t.terminal)}</td><td class="mono">${t.linha}:${t.coluna}</td></tr>`;}
 function tokenView(){const toks=state.result?.tokens||[];return `<div class="detail-head"><div><div class="minor-label">SAÍDA DO ANALISADOR LÉXICO</div><strong>${toks.length} tokens reconhecidos</strong></div><span class="action-tag">LEXER</span></div>${toks.length?`<div class="table-scroll"><table class="data-table"><thead><tr><th>#</th><th>Lexema</th><th>Tipo</th><th>Terminal</th><th>Pos.</th></tr></thead><tbody>${toks.map(rowToken).join('')}</tbody></table></div><p class="hint">Selecione um token para localizá-lo no editor. O terminal é o símbolo entregue ao Parser SLR(1).</p>`:'<p class="ghost-note">Não há tokens para exibir.</p>'}`;}
@@ -131,14 +154,19 @@ function treeView(){const r=state.result,g=state.grammar;if(!r?.passos.length)re
   }
   return `<div class="detail-head"><div><div class="minor-label">DERIVAÇÃO CONCRETA</div><strong>Árvore até a etapa ${state.step+1}</strong></div><span class="action-tag ${partial?'error':''}">${partial?'Parcial':'Em construção'}</span></div><div class="ghost-note" style="margin-bottom:12px">A árvore é reconstruída a partir dos SHIFT/REDUCE anteriores à etapa selecionada.</div><div style="max-height:240px;overflow:auto">${stack.length?stack.map(x=>treeHtml(x)).join(''):'<p class="ghost-note">Avance nas operações para formar os nós.</p>'}</div>${partial?'<p class="hint error-count">A recuperação de erros interrompe a árvore íntegra.</p>':''}${limit?'<p class="hint">Visualização limitada por desempenho.</p>':''}`;
 }
-function renderInspector(){const root=$('#inspectorContent');if(!state.result&&state.tab!=='grammar'){root.innerHTML='<div class="empty"><div class="empty-symbol">⌘</div><h3>Pronto para analisar</h3><p>Execute o código para explorar a pilha, a gramática e os tokens.</p></div>';return;}
+function renderInspector(){const root=$('#inspectorContent');if(!state.result&&state.tab!=='grammar'){root.innerHTML='<div class="empty compact-empty"><p>Execute uma análise para visualizar os dados.</p></div>';return;}
   root.innerHTML=({simulator:detailStep,tokens:tokenView,grammar:grammarView,errors:errorView,tree:treeView}[state.tab]||detailStep)();
   if(state.tab==='grammar')$('#stepBadge').textContent=`${state.grammar?.states.length||130} estados LR(0)`;
 }
 function jump(line,col=1,length=1){input.focus();const pos=posToOffset(line,col);input.setSelectionRange(pos,pos+length);refreshEditor();}
 // Ações de navegação e inspeção da bancada.
 $$('.tab').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.tab)));
-$$('.nav-item').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
+$$('.nav-item').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+$('#btnExamples').addEventListener('click',()=>{const menu=$('#examplesMenu');const open=menu.hidden;menu.hidden=!open;$('#btnExamples').setAttribute('aria-expanded',String(open));});
+document.addEventListener('click',e=>{if(!e.target.closest('#examplePicker'))closeExamples();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeExamples();});
+$('#btnImport').addEventListener('click',()=>$('#btnOpen').click());
+$('#btnHelp').addEventListener('click',()=>setView('grammar'));
 $('#inspectorContent').addEventListener('click',e=>{
   const token=e.target.closest('[data-token]');if(token&&state.result){state.selectedToken=Number(token.dataset.token);const t=state.result.tokens[state.selectedToken];jump(t.linha,t.coluna,t.lexema.length);renderInspector();return;}
   const err=e.target.closest('[data-line]');if(err){jump(Number(err.dataset.line),Number(err.dataset.col));return;}
@@ -156,47 +184,51 @@ input.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const 
 function confirmDiscard(){return !state.dirty||window.confirm('O código foi alterado e não foi salvo. Deseja descartá-lo?');}
 $('#btnNew').addEventListener('click',()=>{if(!confirmDiscard())return;changeSource('program novo;\nbegin\n  \nend.','novo.pas');state.filePath=null;});
 $('#btnOpen').addEventListener('click',async()=>{if(!confirmDiscard())return;try{const d=await window.studio?.openFile();if(!d)return;changeSource(d.content,d.name);state.filePath=d.path;setDirty(false);status('Arquivo aberto: '+d.name);}catch(e){notify(e.message);}});
-async function saveFile(saveAs=false){try{const d=await window.studio?.saveFile({name:state.fileName,path:state.filePath,content:input.value,saveAs});if(d){state.filePath=d.path;state.fileName=d.name;$('#filename').textContent=d.name;setDirty(false);status('Arquivo salvo: '+d.name);}}catch(e){notify(e.message);}}
+async function saveFile(saveAs=false){try{const d=await window.studio?.saveFile({name:state.fileName,path:state.filePath,content:input.value,saveAs});if(d){state.filePath=d.path;state.fileName=d.name;$('#filename').textContent=d.name;$('#selectedExample').textContent=d.name;setDirty(false);status('Arquivo salvo: '+d.name);}}catch(e){notify(e.message);}}
 $('#btnSave').addEventListener('click',()=>saveFile());
 $('#btnExport').addEventListener('click',async()=>{if(!state.result){notify('Analise o código antes de exportar.');return;}try{const ok=await window.studio?.exportReport(reportText(state.result));if(ok)notify('Relatório exportado.');}catch(e){notify(e.message);}});
 $('#examples').addEventListener('click',async e=>{
   const b=e.target.closest('[data-example]');if(!b)return;if(!confirmDiscard())return;
-  try{const s=await window.studio?.loadSample(b.dataset.example);if(s===undefined)return;changeSource(s,b.dataset.example);$$('[data-example]').forEach(x=>x.classList.toggle('active',x===b));setDirty(false);status('Exemplo aberto: '+b.dataset.example);}catch(err){notify(err.message);}
+  try{const s=await window.studio?.loadSample(b.dataset.example);if(s===undefined)return;changeSource(s,b.dataset.example);$('#selectedExample').textContent=b.textContent.trim();$$('[data-example]').forEach(x=>x.classList.toggle('active',x===b));setDirty(false);closeExamples();setMode('code');status('Exemplo aberto: '+b.dataset.example);}catch(err){notify(err.message);}
 });
 document.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey))return;
-  const k=e.key.toLowerCase();if(k==='enter'){e.preventDefault();runAnalysis();}else if(k==='s'){e.preventDefault();saveFile(e.shiftKey);}else if(k==='o'){e.preventDefault();$('#btnOpen').click();}else if(k==='1'){e.preventDefault();setView('simulator');}else if(k==='2'){e.preventDefault();setView('tokens');}else if(k==='3'){e.preventDefault();setView('simulator');}else if(k==='4'){e.preventDefault();setView('grammar');}
+  const k=e.key.toLowerCase();if(k==='enter'){e.preventDefault();runAnalysis();}else if(k==='s'){e.preventDefault();saveFile(e.shiftKey);}else if(k==='o'){e.preventDefault();$('#btnOpen').click();}else if(k==='1'){e.preventDefault();setMode('code');}else if(k==='2'){e.preventDefault();setMode('dynamic');}else if(k==='3'){e.preventDefault();setMode('static');}else if(k==='4'){e.preventDefault();setView('grammar');}
 });
-/** Comunicação de atualização: consulta, download e instalação confirmada. */
-function showUpdate(data){
-  if(!data)return;
-  currentUpdate=data;$('#updateVersion').textContent='v'+String(data.version||'5.1.0');
+// Atualizações oficiais: a instalação só ocorre quando o usuário autoriza.
+function updatePanel(data){
+  if(!data || typeof data!=='object')return;
+  currentUpdate=data;
+  $('#updateVersion').textContent='v'+String(data.version||'5.1.1');
   $('#updateMessage').textContent=String(data.message||'');
-  const progress=Number(data.progress);
-  $('#updateProgressWrap').hidden=!(data.status==='downloading'&&Number.isFinite(progress));
-  $('#updateProgressBar').style.width=Math.min(100,Math.max(0,progress||0))+'%';
-  const labels={idle:'Verificar atualizações',checking:'Verificando...',available:'Baixar atualização',downloading:'Baixando...',downloaded:'Instalar e reiniciar',installing:'Instalando...',current:'Verificar novamente',error:'Tentar novamente',manual:'Abrir Releases'};
-  $('#btnUpdate').textContent=labels[data.status]||'Verificar atualizações';
-  $('#btnUpdate').disabled=['checking','downloading','installing'].includes(data.status);
+  const pct=Number(data.progress);
+  $('#updateProgressWrap').hidden=!(data.status==='downloading' && Number.isFinite(pct));
+  $('#updateProgressBar').style.width=(Number.isFinite(pct)?Math.min(100,Math.max(0,pct)):0)+'%';
+  const button=$('#btnUpdate');
+  const labels={checking:'Verificando...',available:'Baixar atualização',downloading:'Baixando...',downloaded:'Instalar e reiniciar',installing:'Instalando...',current:'Verificar novamente',error:'Tentar novamente',idle:'Verificar atualizações',manual:'Abrir Releases'};
+  button.textContent=labels[data.status]||'Verificar atualizações';
+  button.disabled=['checking','downloading','installing'].includes(data.status);
+  $('#updateDot').className='update-status-dot '+(data.status==='downloaded'?'ready':data.status==='available'?'available':data.status==='error'?'failed':'');
   $('#btnUpdatesTop').title=String(data.message||'Atualizações');
-  $('#btnUpdatesTop').textContent=['available','downloaded'].includes(data.status)?'⬆':'↻';
+  $('#btnUpdatesTop').textContent=data.status==='downloaded'?'⬆':data.status==='available'?'●':'↻';
 }
-async function updateAction(){
+async function handleUpdate(){
   if(!window.studio)return;
   try{
     if(!currentUpdate?.canAutoUpdate){await window.studio.openReleases();return;}
     if(currentUpdate.status==='available'){await window.studio.downloadUpdate();return;}
     if(currentUpdate.status==='downloaded'){
-      if(!window.confirm((state.dirty?'Há código não salvo.\\n\\n':'')+'Instalar a atualização e reiniciar o MiniPascal Studio?'))return;
+      const warning=state.dirty?'Seu código possui alterações não salvas. Salve-o antes de continuar.\n\n':'';
+      if(!window.confirm(warning+'Instalar a nova versão e reiniciar o MiniPascal Studio agora?'))return;
       if(state.dirty){await saveFile();if(state.dirty){notify('Salve o código antes de instalar.');return;}}
       await window.studio.installUpdate();return;
     }
     await window.studio.checkForUpdates();
-  }catch(error){notify('Atualização: '+String(error?.message||error));}
+  }catch(err){notify('Atualização: '+String(err.message||err));}
 }
-$('#btnUpdate').addEventListener('click',updateAction);
-$('#btnUpdatesTop').addEventListener('click',updateAction);
-$('#btnReleases').addEventListener('click',async()=>{try{await window.studio?.openReleases();}catch(e){notify(e.message);}});
+$('#btnUpdate').addEventListener('click',handleUpdate);
+$('#btnUpdatesTop').addEventListener('click',handleUpdate);
+$('#btnReleases').addEventListener('click',async()=>{try{await window.studio?.openReleases();}catch(err){notify(err.message);}});
 async function init(){try{if(!window.studio){status('Pré-visualização visual — execute com npm start');return;}
-  window.studio.onUpdateState(showUpdate);showUpdate(await window.studio.updateStatus());state.grammar=await window.studio.grammar();state.examples=await window.studio.samples();$('#examples').innerHTML=state.examples.map((f,i)=>`<button class="example-item" data-example="${escapeHTML(f.name)}"><span class="example-dot"></span><span>${escapeHTML(f.title)}</span></button>`).join('');updateStats();renderInspector();
+  window.studio.onUpdateState(updatePanel);updatePanel(await window.studio.updateStatus());state.grammar=await window.studio.grammar();state.examples=await window.studio.samples();$('#examples').innerHTML=state.examples.map((f,i)=>`<button class="example-item" data-example="${escapeHTML(f.name)}"><span class="example-dot"></span><span>${escapeHTML(f.title)}</span></button>`).join('');updateStats();renderInspector();
 }catch(err){notify(err.message);}}
 setDirty(false);refreshEditor();updateTimeline();init();

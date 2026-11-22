@@ -1,39 +1,126 @@
 <!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="UTF-8"/><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'self'"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>MiniPascal Studio — SLR(1)</title><link rel="stylesheet" href="./style.css"/></head>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'self'"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>MiniPascal Studio</title>
+  <link rel="stylesheet" href="./style.css"/>
+</head>
 <body>
 <div class="app-shell">
-  <aside class="side">
-    <div class="brand"><div class="brand-icon">{<span>·</span>}</div><div><div class="brand-name">MiniPascal<span>Studio</span></div><div class="brand-caption">COMPILER WORKBENCH</div></div></div>
-    <div class="side-heading">WORKSPACE</div>
-    <nav class="navigation" aria-label="Áreas da bancada">
-      <button class="nav-item active" data-view="simulator"><span class="nav-icon">◈</span><span>Visão geral</span><small>⌘1</small></button>
-      <button class="nav-item" data-view="tokens"><span class="nav-icon">⠿</span><span>Análise léxica</span><small>⌘2</small></button>
-      <button class="nav-item" data-view="simulator"><span class="nav-icon">▦</span><span>Simulador SLR</span><small>⌘3</small></button>
-      <button class="nav-item" data-view="grammar"><span class="nav-icon">⌘</span><span>Gramática</span><small>⌘4</small></button>
-      <button class="nav-item" data-view="tree"><span class="nav-icon">♧</span><span>Árvore sintática</span><small></small></button>
-      <button class="nav-item" data-view="errors"><span class="nav-icon">◇</span><span>Diagnósticos</span><span class="nav-count" id="navErrors">0</span></button>
+  <aside class="side" aria-label="Navegação principal">
+    <div class="brand"><div class="brand-icon">{·}</div><div class="brand-name">MiniPascal<span>Studio</span></div></div>
+    <nav class="navigation" aria-label="Áreas do aplicativo">
+      <button type="button" class="nav-item active" data-mode="code" aria-current="page"><span class="nav-icon">⌘</span><span>Código</span></button>
+      <button type="button" class="nav-item" data-mode="dynamic"><span class="nav-icon">▷</span><span>Análise dinâmica</span></button>
+      <button type="button" class="nav-item" data-mode="static"><span class="nav-icon">▦</span><span>Dados estáticos</span><span class="nav-count" id="navErrors" title="Quantidade de erros">0</span></button>
     </nav>
-    <div class="side-heading examples-heading">ARQUIVOS DE EXEMPLO</div>
-    <div id="examples" class="examples"><button data-demo="inline" class="example-item active"><span class="example-dot"></span><span>programa_exemplo.pas</span></button></div>
-    <div class="side-bottom"><section class="update-card"><div class="update-head">● ATUALIZAÇÕES <small id="updateVersion">v5.1.0</small></div><p id="updateMessage" aria-live="polite">Verificando...</p><div id="updateProgressWrap" class="update-progress" hidden><div id="updateProgressBar"></div></div><div class="update-actions"><button id="btnUpdate">Verificar atualizações</button><button id="btnReleases" title="Releases oficiais do GitHub">↗</button></div></section><div class="onboarding"><div class="onboarding-mark">✦</div><strong>Explore cada operação</strong><p>SHIFT, REDUCE, pilha e estados — tudo conectado ao seu código.</p><div class="keycap">Ctrl + Enter</div> <span class="small-muted">para analisar</span></div><div class="side-footer"><span class="online-dot"></span> Núcleo SLR(1) local <span class="side-version">v5.1</span></div></div>
+    <div class="side-bottom">
+      <section class="update-card" aria-label="Atualizações do aplicativo">
+        <div class="update-title"><span class="update-status-dot" id="updateDot"></span>Atualizações <span id="updateVersion" class="update-version">v5.1.1</span></div>
+        <p id="updateMessage" aria-live="polite">Verificando...</p>
+        <div id="updateProgressWrap" class="update-progress" hidden><div id="updateProgressBar"></div></div>
+        <div class="update-actions"><button id="btnUpdate" class="update-button" type="button">Verificar</button><button id="btnReleases" class="update-link" type="button" title="Abrir Releases oficiais no GitHub">↗</button></div>
+      </section>
+    </div>
   </aside>
   <div class="workbench">
-    <header class="topbar"><div class="breadcrumb"><span class="muted">Workspace</span><span class="slash">/</span><strong>Editor de código</strong><span class="live-dot"></span><span id="fileStatus" class="small-muted">Sem alterações</span></div><div class="top-actions"><button id="btnNew" class="top-icon" title="Novo arquivo">＋</button><button id="btnOpen" class="top-icon" title="Abrir arquivo (Ctrl+O)">▤</button><button id="btnSave" class="top-icon" title="Salvar (Ctrl+S)">▣</button><button id="btnExport" class="top-icon" title="Exportar análise">⇩</button><button id="btnUpdatesTop" class="top-icon" title="Verificar atualizações">↻</button><div class="vertical-line"></div><button id="btnRun" class="primary"><span class="play-icon">▶</span> Analisar código <small>Ctrl↵</small></button></div></header>
-    <main class="main-view">
-      <div class="welcome"><div class="welcome-copy"><span class="overline">AMBIENTE DE DESENVOLVIMENTO</span><h1>Seu código, <em>passo a passo.</em></h1><p>Da análise léxica ao SLR(1). Entenda cada decisão do compilador em tempo real.</p></div><div class="welcome-badge"><div class="badge-kicker">MÉTODO</div><div class="badge-main">SLR<span>(1)</span></div><div class="badge-sub">Shift · Reduce · Accept</div></div></div>
-      <div class="stats"><div class="stat"><div class="stat-icon cyan">{ }</div><div><div class="stat-label">TOKENS</div><div class="stat-num" id="statTokens">—</div></div><span class="stat-sub">Lexer</span></div><div class="stat"><div class="stat-icon violet">▦</div><div><div class="stat-label">ESTADOS LR(0)</div><div class="stat-num" id="statStates">130</div></div><span class="stat-sub">Autômato</span></div><div class="stat"><div class="stat-icon orange">⇄</div><div><div class="stat-label">PASSOS SLR</div><div class="stat-num" id="statSteps">—</div></div><span class="stat-sub">Histórico</span></div><div class="stat"><div class="stat-icon green">✓</div><div><div class="stat-label">RESULTADO</div><div class="stat-num result" id="statResult">Pendente</div></div><span class="stat-sub" id="statErrorCount">Executar análise</span></div></div>
-      <div class="work-grid">
-        <section class="panel code-panel" aria-label="Editor"><div class="panel-title"><div class="panel-title-left"><span class="panel-glyph">‹/›</span><span id="filename">programa_exemplo.pas</span><span id="dirtyFlag" class="dirty-flag" hidden>●</span></div><div class="panel-title-right"><span class="source-pill">MiniPascal</span><button class="flat-btn" id="btnFontMinus" title="Diminuir fonte">A−</button><button class="flat-btn" id="btnFontPlus" title="Aumentar fonte">A+</button></div></div>
-          <div class="editor-wrap" id="editorWrap"><div id="lineNumbers" class="line-numbers" aria-hidden="true"></div><div class="editor-layer"><pre id="codeHighlight" class="code-highlight" aria-hidden="true"></pre><textarea id="codeInput" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Código MiniPascal"></textarea></div></div>
-          <div class="editor-footer"><span class="mini-dot"></span><span id="editorCaret">Ln 1, Col 1</span><span class="footer-right">UTF-8 <span class="middot">·</span> Mini_Pascal <span class="middot">·</span> <span id="editorLines">0 linhas</span></span></div>
-        </section>
-        <section class="panel inspector-panel" aria-label="Visualizador de análise"><div class="panel-title inspector-title"><div class="panel-title-left"><span class="panel-glyph lilac">◫</span> Explorador da análise</div><span class="inspection-indicator" id="stepBadge">Aguardando análise</span></div><div class="inspector-tabs" id="inspectorTabs"><button data-tab="simulator" class="tab active">Simulador</button><button data-tab="tokens" class="tab">Tokens</button><button data-tab="grammar" class="tab">Gramática</button><button data-tab="tree" class="tab">Árvore</button><button data-tab="errors" class="tab">Erros</button></div><div id="inspectorContent" class="inspector-content"><div class="empty"><div class="empty-symbol">⌘</div><h3>Pronto para analisar</h3><p>Execute o código para explorar a pilha, a gramática e os tokens.</p></div></div></section>
+    <header class="topbar">
+      <strong class="view-name" id="workspaceTitle">Código</strong>
+      <div class="top-actions">
+        <button id="btnNew" class="top-icon" title="Novo arquivo" aria-label="Novo arquivo">＋</button>
+        <button id="btnOpen" class="top-icon" title="Abrir arquivo (Ctrl+O)" aria-label="Abrir arquivo">▤</button>
+        <button id="btnSave" class="top-icon" title="Salvar (Ctrl+S)" aria-label="Salvar">▣</button>
+        <button id="btnExport" class="top-icon" title="Exportar análise" aria-label="Exportar análise">⇩</button>
+        <button id="btnUpdatesTop" class="top-icon" title="Verificar atualizações" aria-label="Verificar atualizações">↻</button>
+        <div class="vertical-line"></div>
+        <button id="btnRun" class="primary"><span class="play-icon">▶</span> Analisar código <small>Ctrl↵</small></button>
       </div>
-      <section class="panel timeline"><div class="panel-title"><div class="panel-title-left"><span class="panel-glyph">⤳</span> Linha do tempo <span class="tiny-sub">Histórico de execução SLR(1)</span></div><div class="timeline-tools"><button id="btnFirst" class="transport" title="Reiniciar">⏮</button><button id="btnPrev" class="transport" title="Passo anterior">◀</button><button id="btnPlay" class="transport transport-main" title="Reproduzir / pausar">▶</button><button id="btnNext" class="transport" title="Próximo passo">▶|</button><button id="btnLast" class="transport" title="Último passo">⏭</button><select id="speed" title="Velocidade de reprodução"><option value="1200">0.5×</option><option value="650" selected>1×</option><option value="300">2×</option><option value="100">5×</option></select></div></div><div class="timeline-body"><div class="timeline-header"><span id="timelinePos">Nenhum passo selecionado</span><span id="timelineAction">Aguardando execução</span></div><input type="range" id="stepRange" min="0" max="0" value="0" disabled aria-label="Selecionar etapa de análise"/><div id="timelineTicks" class="timeline-ticks"></div><div class="timeline-bottom"><div id="actionExplain" class="explanation">Clique em <strong>Analisar código</strong> ou pressione <kbd>Ctrl + Enter</kbd> para começar.</div><button id="btnPresentation" class="subtle-button" title="Modo apresentação">⛶ Apresentação</button></div></div></section>
+    </header>
+    <main class="main-view">
+      <section class="studio-view" id="view-code" aria-label="Editor de código">
+        <div class="panel code-panel">
+          <div class="panel-title">
+            <div class="panel-title-left">
+              <div class="example-picker" id="examplePicker">
+                <button type="button" id="btnExamples" class="example-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="examplesMenu" title="Selecionar código">
+                  <span id="selectedExample">Código selecionado</span><span class="chevron">⌄</span>
+                </button>
+                <div class="example-menu" id="examplesMenu" hidden>
+                  <div class="example-menu-heading">Códigos disponíveis</div>
+                  <div id="examples" class="examples"></div>
+                </div>
+              </div>
+              <span class="dirty-flag" id="dirtyFlag" title="Alterações não salvas" hidden>●</span>
+              <span class="sr-only" id="filename">programa_exemplo.pas</span>
+            </div>
+            <div class="panel-title-right"><button class="flat-btn" id="btnFontMinus" title="Diminuir fonte">A−</button><button class="flat-btn" id="btnFontPlus" title="Aumentar fonte">A+</button></div>
+          </div>
+          <div class="editor-wrap" id="editorWrap">
+            <div id="lineNumbers" class="line-numbers" aria-hidden="true"></div>
+            <div class="editor-layer"><pre id="codeHighlight" class="code-highlight" aria-hidden="true"></pre><textarea id="codeInput" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Código MiniPascal"></textarea></div>
+          </div>
+          <div class="editor-footer">
+            <span id="editorCaret">Ln 1, Col 1</span>
+            <span id="editorLines">0 linhas</span>
+            <div class="editor-footer-actions"><button id="btnImport" class="editor-action" type="button">Importar TXT</button><button id="btnHelp" class="editor-action" type="button">Ajuda da linguagem</button></div>
+          </div>
+        </div>
+      </section>
+      <section class="studio-view" id="view-dynamic" aria-label="Análise dinâmica" hidden>
+        <div class="panel dynamic-panel">
+          <div class="panel-title compact-heading" id="summaryRow" hidden>
+            <div class="panel-title-left"><span class="inspection-indicator" id="stepBadge">Estado atual</span></div>
+            <div class="analysis-metrics" aria-label="Resumo da análise">
+              <span>Tokens <strong id="statTokens">—</strong></span>
+              <span>Estados <strong id="statStates">130</strong></span>
+              <span>Passos <strong id="statSteps">—</strong></span>
+              <span><strong id="statResult">Pendente</strong></span>
+              <span id="statErrorCount">Executar análise</span>
+            </div>
+          </div>
+          <section class="timeline" aria-label="Linha do tempo da análise">
+            <div class="panel-title timeline-title"><div class="panel-title-left">Linha do tempo</div>
+              <div class="timeline-tools">
+                <button id="btnFirst" class="transport" title="Primeiro passo" aria-label="Primeiro passo">⏮</button>
+                <button id="btnPrev" class="transport" title="Passo anterior" aria-label="Passo anterior">◀</button>
+                <button id="btnPlay" class="transport transport-main" title="Reproduzir ou pausar" aria-label="Reproduzir ou pausar">▶</button>
+                <button id="btnNext" class="transport" title="Próximo passo" aria-label="Próximo passo">▶|</button>
+                <button id="btnLast" class="transport" title="Último passo" aria-label="Último passo">⏭</button>
+                <select id="speed" title="Velocidade de reprodução" aria-label="Velocidade"><option value="1200">0.5×</option><option value="650" selected>1×</option><option value="300">2×</option><option value="100">5×</option></select>
+              </div>
+            </div>
+            <div class="timeline-body">
+              <div class="timeline-header"><span id="timelinePos">Nenhum passo selecionado</span><span id="timelineAction">Aguardando execução</span></div>
+              <input type="range" id="stepRange" min="0" max="0" value="0" disabled aria-label="Selecionar etapa de análise"/>
+              <div id="timelineTicks" class="timeline-ticks"></div>
+              <div class="timeline-bottom"><div id="actionExplain" class="explanation">Execute uma análise para começar.</div><button id="btnPresentation" class="subtle-button" title="Modo apresentação">⛶ Apresentação</button></div>
+            </div>
+          </section>
+          <div id="dynamicSlot" class="inspector-slot">
+            <div id="inspectorPane" class="inspector-pane">
+              <div class="inspector-tabs" id="inspectorTabs">
+                <button data-tab="simulator" data-group="dynamic" class="tab active">Simulador</button>
+                <button data-tab="tree" data-group="dynamic" class="tab">Árvore</button>
+                <button data-tab="tokens" data-group="static" class="tab">Tokens</button>
+                <button data-tab="grammar" data-group="static" class="tab">Gramática</button>
+                <button data-tab="errors" data-group="static" class="tab">Erros</button>
+              </div>
+              <div id="inspectorContent" class="inspector-content"><div class="empty"><h3>Pronto para analisar</h3></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="studio-view" id="view-static" aria-label="Dados estáticos" hidden>
+        <div class="panel static-panel">
+          <div id="staticSlot" class="inspector-slot"></div>
+        </div>
+      </section>
     </main>
-    <footer class="statusbar"><div><span class="status-light"></span><span id="statusText">Sistema pronto</span></div><div>MiniPascal Studio <span class="middot">·</span> Lexer + Parser <span class="middot">·</span> Electron</div></footer>
+    <div class="sr-only" id="statusText" role="status" aria-live="polite">Pronto</div>
   </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-<script src="./renderer.js"></script></body></html>
+<script src="./renderer.js"></script>
+</body></html>

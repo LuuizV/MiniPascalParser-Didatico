@@ -1,23 +1,44 @@
 # Histórico de versões
 
-## v5.1.0 — Atualização pelas Releases e documentação acadêmica
+Este documento registra as mudanças funcionais e técnicas do MiniPascal Studio.
 
-- Integração com `electron-updater` para o instalador Windows NSIS.
-- Consulta à Release oficial na inicialização e por ação do usuário.
-- Download com progresso e instalação após confirmação e salvamento de alterações.
-- Acesso à Release oficial no modo Portable.
-- Pipeline Windows com `latest.yml`, instalador, portátil e hashes SHA256.
-- Documentação técnica e acadêmica com identificação dos três estudantes e do professor.
-- Testes unitários do gerenciador de atualização.
+## [5.1.1] — Interface simplificada e separação didática
 
-**Pendências:** a v5.0.0 precisa de instalação manual para receber o recurso; instalar/atualizar em Windows real precisa ser testado. Executáveis sem assinatura digital.
+- Removidos o banner de apresentação, o cartão decorativo do método SLR(1), o breadcrumb e o rodapé redundante.
+- Navegação reorganizada em **Código**, **Análise dinâmica** e **Dados estáticos**.
+- Seletor de programas de exemplo recolhível, sem lista lateral permanente; ações Importar TXT e Ajuda no editor.
+- Simulador, árvore e linha do tempo reunidos no mesmo container; tokens, gramática e erros no container estático.
+- Resumo de análise compacto e exibido apenas após uma execução; preservados os controles, atalhos, exportação e atualização.
+- Código do analisador e algoritmo SLR(1) inalterados. Testes de regressão preservados.
 
-## v5.0.0 — Migração para Electron
+## [5.1.0] — Atualizações e documentação acadêmica
 
-- Reimplementação do Lexer e Parser em JavaScript, mantendo a gramática atual.
-- Editor, simulador SLR(1), árvore de derivação, estados e diagnósticos.
-- Regressão dos 130 estados e 611 ações sintáticas da versão Java.
+### Adicionado
+- Gerenciador de atualizações por **GitHub Releases**, usando `electron-updater` no instalador Windows NSIS.
+- Verificação ao iniciar, estado de versão disponível, download sob demanda, progresso e confirmação de instalação.
+- Tratamento especial do executável **Portable**, com link seguro para a Release oficial.
+- Proteção de alterações não salvas antes de instalar e reiniciar.
+- Quatro testes automatizados para os estados do gerenciador de atualização.
+- Documentação: instalação, guia de uso, arquitetura, atualizações e contexto acadêmico.
+- Créditos dos três estudantes participantes e do professor.
 
-## v4.0.0 — Versão Java (legado)
+### Alterado
+- Pipeline Windows: Release por versão, **`latest.yml`**, instalador, portátil e `SHA256SUMS.txt`.
+- README reformulado para apresentação profissional do projeto.
 
-- Continuidade entre o Lexer e o Parser, documentação dos métodos e visualização didática em Swing.
+### Limitações
+- A versão 5.0.0 não se atualiza sozinha; instalar a 5.1.0 manualmente para habilitar o novo mecanismo.
+- Instalação real do NSIS e atualização de uma Release para outra ainda requerem teste prático Windows.
+- Os executáveis ainda não são assinados digitalmente.
+
+## [5.0.0] — Migração para Electron
+
+- Reescrita do núcleo e interface com Electron, HTML, CSS e JavaScript.
+- Editor com realce sintático, simulador SLR(1), árvore de derivação, pilha, FIRST/FOLLOW e ACTION/GOTO.
+- Preservação dos 130 estados e das 611 ações SLR(1) verificadas nos arquivos-base.
+- Compilação Windows via GitHub Actions.
+
+## [4.0.0] — Versão Java didática (legado)
+
+- Continuidade entre o Lexer e o Parser originais, comentários documentados e simulação Java Swing.
+- A implementação Java permanece disponível como referência de regressão na entrega anterior.

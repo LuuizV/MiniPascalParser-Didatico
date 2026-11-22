@@ -1,8 +1,8 @@
 {
   "name": "minipascal-studio",
-  "version": "5.1.0",
+  "version": "5.1.1",
   "private": true,
-  "description": "Estúdio visual de compiladores SLR(1) com atualização via Releases do GitHub",
+  "description": "Bancada didática de compiladores: Lexer, Parser e simulador SLR(1), com atualização pelas Releases do GitHub",
   "main": "src/main.cjs",
   "scripts": {
     "start": "electron .",
@@ -41,7 +41,8 @@
             "x64"
           ]
         }
-      ]
+      ],
+      "artifactName": "MiniPascal-Studio-${version}-${arch}.${ext}"
     },
     "publish": [
       {
