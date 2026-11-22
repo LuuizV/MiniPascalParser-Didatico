@@ -6,7 +6,7 @@
 
 **Análise léxica · Análise sintática SLR(1) · Simulação interativa**
 
-[![Versão](https://img.shields.io/badge/versão-5.1.1-8b7cf6?style=for-the-badge)](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest)
+[![Versão](https://img.shields.io/badge/versão-5.1.2-8b7cf6?style=for-the-badge)](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest)
 [![Electron](https://img.shields.io/badge/Electron-45-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![Node.js](https://img.shields.io/badge/JavaScript-Node.js-358A58?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![Windows](https://img.shields.io/badge/Windows-x64-1570CC?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest)
@@ -90,6 +90,10 @@ flowchart LR
 ```
 
 A implementação atual possui **71 produções**, **130 estados LR(0)** e mantém, nos seis arquivos de regressão sintática, o mesmo histórico de **611 ações SLR(1)** comparado com a versão Java. Esses valores são referências de testes, não propriedades universais de qualquer gramática.
+
+## Plano Mestre entre atualizações
+
+Cada nova versão segue o [**Plano Mestre de Atualizações**](docs/PLANO-MESTRE.md): diagnóstico dos bloqueadores, plano da versão, correção prioritária, regressões, compilação e publicação validada. As Releases só ficam visíveis quando os arquivos de atualização estiverem completos.
 
 ## Atualizações pelas Releases
 

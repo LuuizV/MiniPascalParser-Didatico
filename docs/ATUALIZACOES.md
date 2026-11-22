@@ -8,6 +8,14 @@ A partir da **v5.1.0**, o instalador **NSIS** consulta periodicamente? **Não:**
 
 A edição **Portable** pode abrir a página oficial de Releases, mas sua atualização é manual. A **v5.0.0** precisa ser substituída manualmente pela **v5.1.0** para habilitar o mecanismo.
 
+## Publicação segura a partir da v5.1.2
+
+O GitHub Actions prepara a nova versão como **rascunho**. Somente após verificar o instalador Setup, executável portátil, manifesto `latest.yml`, blockmap, SHA256 e presença dos artefatos no GitHub a Release será publicada. Assim o aplicativo não enxerga versões parcialmente enviadas.
+
+Caso uma instalação antiga apresente `Cannot find latest.yml` / HTTP 404, aguarde a publicação terminar e clique em **Tentar novamente**. Desde a v5.1.2, o aplicativo agenda até duas novas consultas antes de indicar que é necessário abrir as Releases oficiais. Nenhum download ou instalação ocorre automaticamente.
+
+Antes de cada versão, revise o [Plano Mestre](PLANO-MESTRE.md).
+
 ## Publicar nova versão
 
 1. Atualize `version` em `package.json` (por exemplo, `5.2.0`) e escreva as mudanças em `CHANGELOG.md`.

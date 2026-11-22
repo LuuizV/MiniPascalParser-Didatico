@@ -2,6 +2,14 @@
 
 Este documento registra as mudanças funcionais e técnicas do MiniPascal Studio.
 
+## [5.1.2] — Correção de atualização e Plano Mestre
+
+- Workflow cria a Release como rascunho e só publica depois de validar instalador, Portable, `latest.yml`, blockmap e SHA256 no GitHub.
+- Atualizador reconhece o erro `latest.yml` 404 como possível publicação incompleta; faz duas novas consultas automáticas, sem baixar nem instalar silenciosamente.
+- Mensagens de atualização simplificadas e novos testes de falha transitória e recuperação.
+- Adicionado [Plano Mestre](docs/PLANO-MESTRE.md) como regra permanente entre atualizações.
+- **Limitação:** atualização real no Windows deve ser validada após o build.
+
 ## [5.1.1] — Interface simplificada e separação didática
 
 - Removidos o banner de apresentação, o cartão decorativo do método SLR(1), o breadcrumb e o rodapé redundante.

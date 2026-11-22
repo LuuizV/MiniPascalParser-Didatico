@@ -1,6 +1,6 @@
 {
   "name": "minipascal-studio",
-  "version": "5.1.1",
+  "version": "5.1.2",
   "private": true,
   "description": "Bancada didática de compiladores: Lexer, Parser e simulador SLR(1), com atualização pelas Releases do GitHub",
   "main": "src/main.cjs",
@@ -49,7 +49,7 @@
         "provider": "github",
         "owner": "LuuizV",
         "repo": "MiniPascalParser-Didatico",
-        "releaseType": "release"
+        "releaseType": "draft"
       }
     ],
     "nsis": {

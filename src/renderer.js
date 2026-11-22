@@ -52,7 +52,7 @@ function updateStats(){const r=state.result;$('#summaryRow').hidden=!r;
   const n=(r?.errosLexicos.length||0)+(r?.errosSintaticos.length||0);
   $('#statErrorCount').textContent=r?`${n} erro${n===1?'':'s'}`:'Executar análise';$('#navErrors').textContent=n;
 }
-function reportText(r){const a=[`MiniPascal Studio v5.1.1 — ${state.fileName}`,`ESTADOS=${r.estados}`,`ACEITO=${r.aceito}`];
+function reportText(r){const a=[`MiniPascal Studio v5.1.2 — ${state.fileName}`,`ESTADOS=${r.estados}`,`ACEITO=${r.aceito}`];
   for(const t of r.tokens)a.push(`TOK=<${t.lexema}, ${t.descricao}> [linha ${t.linha}, coluna ${t.coluna}]`);
   for(const e of r.errosLexicos)a.push(`LEX=Linha ${e.linha}, coluna ${e.coluna}: ${e.mensagem}${e.lexema?' ['+e.lexema+']':''}`);
   for(const e of r.errosSintaticos)a.push(`SYN=Linha ${e.linha}, coluna ${e.coluna}: ${e.mensagem}`);
@@ -204,9 +204,9 @@ function updatePanel(data){
   $('#updateProgressWrap').hidden=!(data.status==='downloading' && Number.isFinite(pct));
   $('#updateProgressBar').style.width=(Number.isFinite(pct)?Math.min(100,Math.max(0,pct)):0)+'%';
   const button=$('#btnUpdate');
-  const labels={checking:'Verificando...',available:'Baixar atualização',downloading:'Baixando...',downloaded:'Instalar e reiniciar',installing:'Instalando...',current:'Verificar novamente',error:'Tentar novamente',idle:'Verificar atualizações',manual:'Abrir Releases'};
+  const labels={checking:'Verificando...',available:'Baixar atualização',downloading:'Baixando...',downloaded:'Instalar e reiniciar',installing:'Instalando...',current:'Verificar novamente',preparing:'Nova tentativa agendada',error:'Tentar novamente',idle:'Verificar atualizações',manual:'Abrir Releases'};
   button.textContent=labels[data.status]||'Verificar atualizações';
-  button.disabled=['checking','downloading','installing'].includes(data.status);
+  button.disabled=['checking','preparing','downloading','installing'].includes(data.status);
   $('#updateDot').className='update-status-dot '+(data.status==='downloaded'?'ready':data.status==='available'?'available':data.status==='error'?'failed':'');
   $('#btnUpdatesTop').title=String(data.message||'Atualizações');
   $('#btnUpdatesTop').textContent=data.status==='downloaded'?'⬆':data.status==='available'?'●':'↻';

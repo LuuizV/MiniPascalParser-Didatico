@@ -1,4 +1,4 @@
-name: Windows - instalador, portable e Release
+name: Windows - instalador, portatil e Release
 on:
   push:
     branches: [main]
@@ -10,73 +10,98 @@ concurrency:
   cancel-in-progress: false
 jobs:
   windows:
-    name: Compilar Windows x64 e publicar a versão
+    name: Compilar e publicar Release validada
     runs-on: windows-latest
-    timeout-minutes: 50
+    timeout-minutes: 55
     steps:
-      - name: Obter o código
+      - name: Obter o codigo
         uses: actions/checkout@v4
       - name: Preparar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Instalar dependências
+      - name: Instalar dependencias
         run: npm install --no-audit --no-fund
-      - name: Validar regressões e sintaxe
+      - name: Validar regressao e sintaxe
         run: |
           npm run check
           npm test
-      - name: Verificar a Release e completar artefatos faltantes
+      - name: Reservar Release como rascunho
         id: version
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $v = node -p "require('./package.json').version"
-          $tag = "v$v"
+          $version = node -p "require('./package.json').version"
+          $tag = "v$version"
           "tag=$tag" >> $env:GITHUB_OUTPUT
           $PSNativeCommandUseErrorActionPreference = $false
-          $assets = @(gh release view $tag --repo "$env:GITHUB_REPOSITORY" --json assets --jq '.assets[].name' 2>$null)
+          $info = gh release view $tag --repo "$env:GITHUB_REPOSITORY" --json isDraft,assets 2>$null
           $exists = $LASTEXITCODE -eq 0
-          $required = @("MiniPascal-Studio-Setup-$v-x64.exe", "MiniPascal-Studio-Portable-$v-x64.exe", "latest.yml", "SHA256SUMS.txt")
-          $missing = @($required | Where-Object { $assets -notcontains $_ })
-          if ($exists -and $missing.Count -eq 0) {
-            "publish=false" >> $env:GITHUB_OUTPUT
-            Write-Host "Release completa: $tag. Para nova entrega incremente a versão."
-          } else {
-            "publish=true" >> $env:GITHUB_OUTPUT
-            if (-not $exists) {
-              gh release create $tag --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "MiniPascal Studio $tag - Windows" --notes "Instalador NSIS atualizável e versão portátil. Aplicativo sem assinatura digital." --latest
-              if ($LASTEXITCODE -ne 0) { throw "Não foi possível criar a Release $tag." }
+          if ($exists) {
+            $release = $info | ConvertFrom-Json
+            if ($release.isDraft -and @($release.assets).Count -eq 0) {
+              "publish=true" >> $env:GITHUB_OUTPUT
+            } elseif (!$release.isDraft) {
+              $required = @("MiniPascal-Studio-Setup-$version-x64.exe", "MiniPascal-Studio-Portable-$version-x64.exe", 'latest.yml', 'SHA256SUMS.txt')
+              $assets = @($release.assets | ForEach-Object { $_.name })
+              if (@($required | Where-Object { $assets -notcontains $_ }).Count -ne 0) { throw "Release $tag publica incompleta; revisar manualmente." }
+              "publish=false" >> $env:GITHUB_OUTPUT
+              Write-Host "Release $tag ja publicada; para outras mudancas incremente a versao."
             } else {
-              Write-Host "Release parcial detectada; completando arquivos faltantes: $($missing -join ', ')"
+              throw "Rascunho $tag contem artefatos; revise antes de executar novamente."
             }
+          } else {
+            gh release create $tag --draft --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "MiniPascal Studio $tag - Windows" --notes "Rascunho em validacao."
+            if ($LASTEXITCODE -ne 0) { throw "Falha criando rascunho $tag" }
+            "publish=true" >> $env:GITHUB_OUTPUT
           }
-          exit 0
-      - name: Compilar NSIS + portable e publicar latest.yml
+      - name: Compilar NSIS e portatil no rascunho
         if: steps.version.outputs.publish == 'true'
+        shell: pwsh
         run: npx electron-builder --win nsis portable --x64 --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-      - name: Validar manifesto e calcular SHA256
+      - name: Conferir latest.yml e calcular SHA256
         if: steps.version.outputs.publish == 'true'
         shell: pwsh
         run: |
-          if (!(Test-Path 'dist/latest.yml')) { throw 'latest.yml não foi gerado.' }
-          if (!(Get-ChildItem dist/*Setup*.exe) -or !(Get-ChildItem dist/*Portable*.exe)) { throw 'Executáveis esperados ausentes.' }
+          $version = node -p "require('./package.json').version"
+          $setup = "MiniPascal-Studio-Setup-$version-x64.exe"
+          $portable = "MiniPascal-Studio-Portable-$version-x64.exe"
+          foreach ($name in @($setup, $portable, 'latest.yml', "$setup.blockmap")) {
+            if (!(Test-Path "dist/$name")) { throw "Artefato ausente: $name" }
+          }
+          $manifest = Get-Content dist/latest.yml -Raw
+          if (!$manifest.Contains("version: $version") -or !$manifest.Contains($setup) -or !$manifest.Contains('sha512:')) {
+            throw 'latest.yml nao corresponde a versao, ao instalador ou ao hash esperado.'
+          }
           Get-ChildItem dist/*.exe | ForEach-Object {
             "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
-          } | Set-Content 'dist/SHA256SUMS.txt' -Encoding utf8
-      - name: Publicar hashes e finalizar Release
+          } | Set-Content dist/SHA256SUMS.txt -Encoding utf8
+      - name: Validar assets remotos e publicar apenas a Release completa
         if: steps.version.outputs.publish == 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
         run: |
-          gh release upload "$env:RELEASE_TAG" dist/SHA256SUMS.txt --repo "$env:GITHUB_REPOSITORY" --clobber
-          gh release edit "$env:RELEASE_TAG" --repo "$env:GITHUB_REPOSITORY" --draft=false --latest --title "MiniPascal Studio $env:RELEASE_TAG - Windows" --notes "Instalador NSIS atualizável por Releases. Portable com atualização manual. Sem assinatura digital."
+          gh release upload "$env:RELEASE_TAG" dist/SHA256SUMS.txt --repo "$env:GITHUB_REPOSITORY"
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao enviar SHA256SUMS.' }
+          $release = gh release view "$env:RELEASE_TAG" --repo "$env:GITHUB_REPOSITORY" --json isDraft,assets | ConvertFrom-Json
+          if (!$release.isDraft) { throw 'Release publica antes da verificacao final.' }
+          $version = node -p "require('./package.json').version"
+          $setup = "MiniPascal-Studio-Setup-$version-x64.exe"
+          $required = @($setup, "MiniPascal-Studio-Portable-$version-x64.exe", 'latest.yml', "$setup.blockmap", 'SHA256SUMS.txt')
+          $assets = @($release.assets | ForEach-Object { $_.name })
+          foreach ($name in $required) {
+            if ($assets -notcontains $name) { throw "Artefato $name ausente no GitHub. Release permanece rascunho." }
+          }
+          gh release edit "$env:RELEASE_TAG" --repo "$env:GITHUB_REPOSITORY" --draft=false --latest --title "MiniPascal Studio $env:RELEASE_TAG - Windows" --notes "Setup NSIS atualizado por Releases, Portable manual, latest.yml, blockmap e SHA256. Aplicativo sem assinatura de codigo."
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao publicar. Release permanece rascunho.' }
+          $after = gh release view "$env:RELEASE_TAG" --repo "$env:GITHUB_REPOSITORY" --json isDraft | ConvertFrom-Json
+          if ($after.isDraft) { throw 'Release continua em rascunho.' }
       - name: Guardar artefatos
         if: steps.version.outputs.publish == 'true'
         uses: actions/upload-artifact@v4
