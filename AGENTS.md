@@ -1,16 +1,24 @@
-# Regras permanentes de desenvolvimento — MiniPascal Studio
+# AGENTS — Regras permanentes do MiniPascal Studio
 
-**Obrigatório antes de qualquer atualização:** ler [Plano Mestre](docs/PLANO-MESTRE.md), verificar o HEAD do repositório, as Releases, os bloqueadores e o resultado da última suíte de testes. Novos pedidos devem ser incorporados ao plano antes de implementação de mudanças amplas.
+## Governança obrigatória
 
-1. Corrigir falhas graves, regressões e problemas de atualização **antes** de mudanças visuais ou recursos adicionais.
-2. Preservar a gramática Mini_Pascal; não afirmar compatibilidade integral com a Sigma do PDF sem implementar e testar.
-3. Preservar as referências: **71 produções, 130 estados LR(0), 611 ações SLR(1)**.
-4. Não exigir Java nem Python para executar o Electron.
-5. Rodar `npm run check` e `npm test` e complementar com testes específicos do problema.
-6. Manter `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`, CSP e IPC limitado.
-7. Não permitir URLs arbitrárias no updater nem embutir tokens de autenticação.
-8. Não instalar sem confirmação; preservar edições não salvas. A versão Portable permanece manual.
-9. Manter cada Release em rascunho até instalar, manifesto e hashes serem verificados; não substituir arquivos de tags antigas.
-10. Incrementar a versão e atualizar o CHANGELOG; distinguir build automático de teste de instalação Windows real.
-11. Documentar decisões, limitações e pendências no Plano Mestre.
-12. Preservar créditos: Luiz Vicente Gomes Jirardi, Raimundo José Santiago Netto, Jader Levi Nascimento Abreu Azevedo; professor José Carlos Martins Oliveira.
+1. **Acumular todas as solicitações entre releases.** Não modificar o código ou publicar assim que um novo pedido chegar. Atualizar o Plano Mestre e esperar autorização explícita para o pacote consolidado.
+2. Antes de implementar, conferir HEAD do GitHub, o Plano Mestre, README, CHANGELOG, Releases e os testes da versão atual.
+3. Corrigir segurança, falhas de atualização, travamentos e perda de código antes de refinamentos estéticos.
+4. Publicar novas versões com número semântico, testes, changelog e Release atômica. Não reescrever versões antigas.
+5. Não afirmar que um instalador ou atualização Windows foi testado manualmente quando apenas os testes automatizados passaram.
+
+## Núcleo e interface
+
+6. Preservar a gramática Mini_Pascal até autorização específica. Regressão de referência: 71 produções, 130 estados LR(0), 611 passos SLR(1); resultados e recuperação existentes.
+7. Não utilizar Python nem Java como dependências de execução; Electron + JavaScript.
+8. A visualização deve mostrar apenas resultados **reais** do Parser. Pilha anterior à operação; árvore após a operação; identificar limites e erro de recuperação.
+9. Manter tokens, gramática e erros como dados estáticos; simulador, árvore, linha do código e linha do tempo juntos na análise dinâmica.
+10. IHC: priorizar legibilidade, atalhos, escala persistente, sem comandos duplicados ou informação promocional inútil.
+11. Manter `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`, CSP e IPC restrito. Escapar textos externos antes de inserir HTML/SVG.
+12. Não usar instalador silencioso, URLs arbitrárias, tokens pessoais em bundles ou janela de Release pública sem manifesto `latest.yml` completo.
+13. Rodar `npm run check` e `npm test` após alterações e, para mudanças na UI, executar também smoke test visual.
+
+## Créditos
+
+Participantes: **Luiz Vicente Gomes Jirardi**, **Raimundo José Santiago Netto**, **Jader Levi Nascimento Abreu Azevedo**. Professor: **José Carlos Martins Oliveira**. Universidade Estadual do Sudoeste da Bahia — Compiladores.

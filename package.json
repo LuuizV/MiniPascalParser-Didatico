@@ -1,13 +1,13 @@
 {
   "name": "minipascal-studio",
-  "version": "5.1.2",
+  "version": "5.2.0",
   "private": true,
   "description": "Bancada didática de compiladores: Lexer, Parser e simulador SLR(1), com atualização pelas Releases do GitHub",
   "main": "src/main.cjs",
   "scripts": {
     "start": "electron .",
     "test": "node --test tests/*.test.cjs",
-    "check": "node --check src/main.cjs && node --check src/preload.cjs && node --check src/update-manager.cjs && node --check src/core.cjs && node --check src/renderer.js",
+    "check": "node --check src/main.cjs && node --check src/preload.cjs && node --check src/update-manager.cjs && node --check src/core.cjs && node --check src/analysis-worker.cjs && node --check src/ui-utils.js && node --check src/tree-graph.js && node --check src/renderer.js",
     "dist:win": "electron-builder --win nsis portable",
     "dist:linux": "electron-builder --linux AppImage"
   },

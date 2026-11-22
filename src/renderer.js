@@ -1,8 +1,9 @@
 'use strict';
-/** Interface HTML/CSS nativa do Electron. Nenhum dado do usuário vira HTML não escapado. */
-const $=s=>document.querySelector(s);
-const $$=s=>[...document.querySelectorAll(s)];
-const escapeHTML=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+/** Controlador de apresentação. A análise é realizada pelo núcleo SLR(1) do processo principal. */
+const $=selector=>document.querySelector(selector);
+const $$=selector=>Array.from(document.querySelectorAll(selector));
+const {escapeHTML,offsetAt,sourceLine,actionInfo}=window.MiniPascalUI;
+const tree=window.MiniPascalTree;
 const sample=`program exemplo;
 var contador: integer;
 begin
@@ -11,224 +12,345 @@ begin
   while contador > 0 do
     contador := contador - 1;
 end.`;
-const state={result:null,grammar:null,step:0,tab:'simulator',fileName:'programa_exemplo.pas',filePath:null,dirty:false,font:13,playing:false,timer:null,selectedToken:-1,grammarTab:'states',inspectState:0,examples:[],mutated:false};
-const input=$('#codeInput');input.value=sample;
-let currentUpdate=null;
-function notify(message){const el=$('#toast');el.textContent=message;el.classList.add('visible');clearTimeout(notify.timer);notify.timer=setTimeout(()=>el.classList.remove('visible'),3000);}
+const input=$('#codeInput');
+input.value=sample;
+const state={
+  result:null,grammar:null,step:0,mode:'code',dynamicTab:'simulator',staticTab:'tokens',
+  fileName:'exemplo.pas',filePath:null,dirty:false,font:16,scale:1,speed:700,
+  playing:false,interval:null,selectedToken:-1,grammarTab:'states',inspectState:0,followState:true,
+  selectedError:0,zoom:1,collapsed:new Set(),manualFocus:null,examples:[],sourceVersion:0,analyzing:false,update:null
+};
+function toast(message){const el=$('#toast');el.textContent=String(message);el.classList.add('visible');clearTimeout(toast.timeout);toast.timeout=setTimeout(()=>el.classList.remove('visible'),3800);}
 function status(message){$('#statusText').textContent=message;}
-function setDirty(flag){state.dirty=flag;$('#dirtyFlag').hidden=!flag;}
+function setDirty(value){state.dirty=value;$('#dirtyFlag').hidden=!value;}
 function syntaxColor(code){
-  const reg=/\/\*[\s\S]*?(?:\*\/|$)|"[^"\r\n]*"|'[^'\r\n]*'|\b(?:program|var|begin|end|integer|real|char|string|procedure|if|then|else|while|do|div|mod)\b|\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b|:=|<=|>=|<>|[+\-*\/=<>]/gi;
-  let s='',from=0;
-  for(const m of code.matchAll(reg)){
-    s+=escapeHTML(code.slice(from,m.index));const text=m[0],kind=text.startsWith('/*')?'cm':text[0]==='"'||text[0]==="'"?'str':/^\d/.test(text)?'num':/^(?:\w)+$/.test(text)&&!['mod','div'].includes(text.toLowerCase())?'kw':'op';
-    s+=`<span class="${kind}">${escapeHTML(text)}</span>`;from=m.index+text.length;
+  const reg=/\/\*[\s\S]*?(?:\*\/|$)|\{[^}\n]*\}|"[^"\r\n]*"|'[^'\r\n]*'|\b(?:program|var|begin|end|integer|real|char|string|procedure|if|then|else|while|do|div|mod)\b|\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b|:=|<=|>=|<>|[+\-*\/=<>]/gi;
+  let output='',from=0;
+  for(const match of code.matchAll(reg)){
+    output+=escapeHTML(code.slice(from,match.index));
+    const text=match[0],kind=text.startsWith('/*')||text.startsWith('{')?'cm':/^['"]/.test(text)?'str':/^\d/.test(text)?'num':/^[a-z]/i.test(text)&&!['mod','div'].includes(text.toLowerCase())?'kw':'op';
+    output+=`<span class="${kind}">${escapeHTML(text)}</span>`;from=match.index+text.length;
   }
-  return s+escapeHTML(code.slice(from));
+  return output+escapeHTML(code.slice(from));
 }
-function posToOffset(line,col){const ls=input.value.split(/\r\n|\r|\n/);let off=0;for(let i=0;i<line-1&&i<ls.length;i++)off+=ls[i].length+1;return Math.min(input.value.length,off+Math.max(0,col-1));}
+function activeToken(){const step=state.result?.passos[state.step];return state.manualFocus|| (state.selectedToken>=0?state.result?.tokens[state.selectedToken]:step?.detalhes.token);}
 function highlightedCode(){
-  const code=input.value,step=state.result?.passos?.[state.step],t=state.selectedToken>=0?state.result?.tokens[state.selectedToken]:step?.detalhes?.token;
-  if(!t||!t.lexema)return syntaxColor(code)+'\n';
-  const start=posToOffset(t.linha,t.coluna),end=Math.min(code.length,start+t.lexema.length);
-  return syntaxColor(code.slice(0,start))+`<span class="hit">${escapeHTML(code.slice(start,end))}</span>`+syntaxColor(code.slice(end))+'\n';
+  const content=input.value,t=activeToken();if(!t?.lexema)return syntaxColor(content)+'\n';
+  const start=offsetAt(content,t.linha,t.coluna),end=Math.min(content.length,start+t.lexema.length);
+  return syntaxColor(content.slice(0,start))+`<span class="hit">${escapeHTML(content.slice(start,end))}</span>`+syntaxColor(content.slice(end))+'\n';
 }
+function scrollTogether(){const h=$('#codeHighlight'),nums=$('#lineNumbers');h.scrollTop=input.scrollTop;h.scrollLeft=input.scrollLeft;nums.scrollTop=input.scrollTop;}
+function cursorInfo(){const text=input.value.slice(0,input.selectionStart),parts=text.split(/\r\n|\r|\n/);$('#editorCaret').textContent=`Linha ${parts.length}, coluna ${parts.at(-1).length+1}`;}
 function refreshEditor(){
   $('#codeHighlight').innerHTML=highlightedCode();
   const count=input.value.split(/\r\n|\r|\n/).length;
-  $('#editorLines').textContent=`${count} linha${count!==1?'s':''}`;
-  const active=state.result?.passos[state.step]?.detalhes?.token?.linha||0;
-  const errorLines=new Set([...(state.result?.errosLexicos||[]),...(state.result?.errosSintaticos||[])].map(e=>e.linha));
-  $('#lineNumbers').innerHTML=Array.from({length:count},(_,i)=>`<span class="${i+1===active?'line-active':''} ${errorLines.has(i+1)?'line-error':''}">${i+1}</span>`).join('\n');
+  $('#editorLines').textContent=`${count} linha${count===1?'':'s'}`;
+  const currentLine=activeToken()?.linha??0;
+  const errorLines=new Set([...(state.result?.errosLexicos??[]),...(state.result?.errosSintaticos??[])].map(e=>e.linha));
+  $('#lineNumbers').innerHTML=Array.from({length:count},(_,i)=>`<span class="${i+1===currentLine?'line-active':''} ${errorLines.has(i+1)?'line-error':''}">${i+1}</span>`).join('');
   cursorInfo();scrollTogether();
 }
-function scrollTogether(){const h=$('#codeHighlight'),lines=$('#lineNumbers');h.scrollTop=input.scrollTop;h.scrollLeft=input.scrollLeft;lines.scrollTop=input.scrollTop;}
-function cursorInfo(){let before=input.value.slice(0,input.selectionStart).split(/\r\n|\r|\n/),line=before.length,col=before.at(-1).length+1;$('#editorCaret').textContent=`Ln ${line}, Col ${col}`;}
-function changeSource(s,filename=null){input.value=s;if(filename){state.fileName=filename;$('#filename').textContent=filename;$('#selectedExample').textContent=filename;state.filePath=null;}state.selectedToken=-1;invalidate();refreshEditor();}
-function invalidate(){pause();state.result=null;state.step=0;setDirty(true);updateStats();updateTimeline();renderInspector();}
-function updateStats(){const r=state.result;$('#summaryRow').hidden=!r;
-  $('#statTokens').textContent=r?r.tokens.length:'—';$('#statSteps').textContent=r?r.passos.length:'—';$('#statStates').textContent=state.grammar?.states.length||130;
-  $('#statResult').textContent=!r?'Pendente':r.aceito?'Aceito':'Rejeitado';$('#statResult').style.color=!r?'var(--text)':r.aceito?'#72e0b6':'#ffb6ac';
-  const n=(r?.errosLexicos.length||0)+(r?.errosSintaticos.length||0);
-  $('#statErrorCount').textContent=r?`${n} erro${n===1?'':'s'}`:'Executar análise';$('#navErrors').textContent=n;
+function pause(){if(state.interval)clearInterval(state.interval);state.interval=null;state.playing=false;$('#btnPlay').textContent='▶';}
+function invalidate(){
+  pause();state.result=null;state.step=0;state.selectedToken=-1;state.manualFocus=null;state.sourceVersion++;setDirty(true);
+  refreshSummary();updateTimeline();renderDynamic();renderStatic();
 }
-function reportText(r){const a=[`MiniPascal Studio v5.1.2 — ${state.fileName}`,`ESTADOS=${r.estados}`,`ACEITO=${r.aceito}`];
-  for(const t of r.tokens)a.push(`TOK=<${t.lexema}, ${t.descricao}> [linha ${t.linha}, coluna ${t.coluna}]`);
-  for(const e of r.errosLexicos)a.push(`LEX=Linha ${e.linha}, coluna ${e.coluna}: ${e.mensagem}${e.lexema?' ['+e.lexema+']':''}`);
-  for(const e of r.errosSintaticos)a.push(`SYN=Linha ${e.linha}, coluna ${e.coluna}: ${e.mensagem}`);
-  for(const t of r.passos)a.push(`STEP=${t.passo}|${t.pilha}|${t.entrada}|${t.acao}`);
-  return a.join('\n')+'\n';
+function changeSource(content,name,markDirty=true){
+  input.value=content;state.fileName=name||'novo.pas';state.filePath=null;
+  $('#selectedExample').textContent=state.fileName;invalidate();setDirty(markDirty);refreshEditor();
 }
-async function runAnalysis(){pause();if(!window.studio){notify('Abra a aplicação no Electron para executar o analisador.');return;}
-  try{status('Executando análise...');const r=await window.studio.analyze(input.value);state.result=r;state.step=0;state.selectedToken=-1;updateStats();updateTimeline();setMode('dynamic','simulator');refreshEditor();status(r.aceito?'Programa aceito pela gramática':`Análise concluída · ${r.errosLexicos.length+r.errosSintaticos.length} erro(s)`);}
-  catch(err){status('Não foi possível analisar');notify(err.message);}}
-function explain(step){const d=step?.detalhes;if(!d)return 'Sem etapas registradas.';
-  if(d.tipo==='SHIFT')return `O Parser consumiu <strong>${escapeHTML(d.token.lexema)}</strong> e empilhou o estado <strong>${d.destinoShift}</strong> pela tabela ACTION.`;
-  if(d.tipo==='REDUCE'){const p=state.grammar?.productions[d.producao];return `REDUCE pela produção <strong>[${d.producao}] ${escapeHTML(p?.lhs||'')}</strong>. Após desempilhar ${p?.rhs.length||0} símbolo(s), GOTO[${d.origemGoto}, ${escapeHTML(p?.lhs||'')}] = <strong>${d.destinoGoto}</strong>.`;}
-  if(d.tipo==='ACCEPT')return 'O analisador reconheceu toda a entrada. <strong>ACCEPT:</strong> programa sintaticamente válido.';
-  return `ACTION[${d.estado}, ${escapeHTML(d.terminal)}] não possui entrada. Recuperação: ${d.indiceRetomada<0?'não foi possível continuar':`retomada no token ${d.indiceRetomada+1}`}; ${d.estadosRemovidos} estado(s) removidos.`;
+function applyPreferences(){
+  document.documentElement.style.setProperty('--ui-scale',String(state.scale));
+  document.documentElement.style.setProperty('--code-font',state.font+'px');
+  $('#speed').value=String(state.speed);
+  refreshEditor();
 }
-function updateTimeline(){const r=state.result,steps=r?.passos||[],current=steps[state.step];
-  $('#timelinePos').textContent=steps.length?`ETAPA ${state.step+1} DE ${steps.length}`:'Nenhum passo selecionado';
-  $('#timelineAction').textContent=current?current.acao:'Aguardando execução';
-  const range=$('#stepRange');range.disabled=!steps.length;range.min=0;range.max=Math.max(0,steps.length-1);range.value=state.step;
-  $('#timelineTicks').innerHTML=steps.length?`<span>Passo 1</span><span>${Math.ceil(steps.length/2)}</span><span>Passo ${steps.length}</span>`:'';
-  $('#actionExplain').innerHTML=current?explain(current):'Execute uma análise para visualizar as etapas.';
-  $('#stepBadge').textContent=current?`Estado ${current.detalhes.estado}`:'Aguardando análise';
-  for(const [id,cond] of [['#btnFirst',!steps.length||state.step===0],['#btnPrev',!steps.length||state.step===0],['#btnNext',!steps.length||state.step>=steps.length-1],['#btnLast',!steps.length||state.step>=steps.length-1],['#btnPlay',steps.length<2]])$(id).disabled=cond;
+function savePreferences(){window.studio?.saveSettings({scale:state.scale,font:state.font,speed:state.speed}).catch(()=>{});}
+function setMode(mode){
+  if(!['code','dynamic','static'].includes(mode))return;
+  state.mode=mode;
+  $$('.studio-view').forEach(view=>view.hidden=view.id!==`view-${mode}`);
+  $$('.nav-item').forEach(b=>{const active=b.dataset.mode===mode;b.classList.toggle('active',active);active?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current');});
+  $('#viewTitle').textContent={code:'Código',dynamic:'Análise dinâmica',static:'Dados estáticos'}[mode];
+  closeExamples();
+  if(mode==='dynamic'){updateTimeline();renderDynamic();}
+  if(mode==='static'){if(state.followState)state.inspectState=state.result?.passos[state.step]?.detalhes.estado||state.inspectState;renderStatic();}
+}
+function closeExamples(){$('#examplesMenu').hidden=true;$('#btnExamples').setAttribute('aria-expanded','false');}
+function refreshSummary(){
+  const r=state.result,errors=(r?.errosLexicos.length||0)+(r?.errosSintaticos.length||0);
+  $('#statResult').textContent=!r?'Aguardando análise':r.aceito?'Aceito pela gramática':'Análise com erros';
+  $('#statResult').className=!r?'':r.aceito?'accepted':'rejected';
+  $('#statTokens').textContent=r?`${r.tokens.length} tokens`:'— tokens';
+  $('#statSteps').textContent=r?`${r.passos.length} passos`:'— passos';
+  $('#statErrors').textContent=r?`${errors} erros`:'— erros';
+  $('#errorTabCount').textContent=errors?`(${errors})`:'';
+  $('#navErrors').hidden=!errors;$('#navErrors').textContent=errors;
+  $('#btnExport').disabled=!r;
+}
+function focusedCode(step){
+  if(!step)return {line:'—',html:'<span>Execute uma análise para acompanhar o código.</span>'};
+  const t=step.detalhes.token;
+  if(!t?.linha)return {line:'—',html:'<span>Fim da entrada</span>'};
+  const source=sourceLine(input.value,t.linha),start=Math.max(0,(t.coluna||1)-1),end=Math.min(source.length,start+(t.lexema?.length||0));
+  const html=escapeHTML(source.slice(0,start))+(start<end?`<span class="focus-hit">${escapeHTML(source.slice(start,end))}</span>`:'')+escapeHTML(source.slice(end));
+  return {line:t.linha,html:html||'<span>(linha em branco)</span>'};
+}
+function updateTimeline(){
+  const steps=state.result?.passos??[],step=steps[state.step];
+  const info=actionInfo(step,state.grammar),focus=focusedCode(step);
+  $('#timelinePos').textContent=steps.length?`Etapa ${state.step+1} de ${steps.length}`:'Nenhuma etapa';
+  $('#timelineState').textContent=step?`Estado q${step.detalhes.estado}`:'—';
+  const range=$('#stepRange');range.disabled=!steps.length;range.max=Math.max(0,steps.length-1);range.value=state.step;
+  $('#focusLine').textContent=String(focus.line);$('#focusLabel').textContent=step?.detalhes.tipo==='REDUCE'?'Linha do próximo token':'Linha analisada';$('#focusedCode').innerHTML=focus.html;
+  $('#actionTitle').textContent=info.title;$('#actionExplanation').textContent=info.description;
+  $('#actionTechnical').textContent=info.technical||'';
+  $('#actionBadge').className='action-badge '+info.kind;
+  $('#actionBadge').textContent={shift:'CONSUMIU',reduce:'REDUZIU',accept:'ACEITOU',error:'ERRO',idle:'AGUARDANDO'}[info.kind];
+  [['btnFirst',!steps.length||state.step===0],['btnPrev',!steps.length||state.step===0],['btnNext',!steps.length||state.step===steps.length-1],['btnLast',!steps.length||state.step===steps.length-1],['btnPlay',steps.length<2]].forEach(([id,disabled])=>{$('#'+id).disabled=disabled;});
   $('#btnPlay').textContent=state.playing?'Ⅱ':'▶';
 }
-function setStep(idx){const steps=state.result?.passos||[];if(!steps.length)return;state.step=Math.max(0,Math.min(steps.length-1,idx));state.selectedToken=-1;updateTimeline();renderInspector();refreshEditor();}
-function pause(){if(state.timer)clearInterval(state.timer);state.timer=null;state.playing=false;$('#btnPlay').textContent='▶';}
-function play(){const total=state.result?.passos.length||0;if(!total)return;if(state.playing){pause();return;}if(state.step>=total-1)setStep(0);state.playing=true;updateTimeline();state.timer=setInterval(()=>{if(state.step>=total-1){pause();updateTimeline();return;}setStep(state.step+1);},Number($('#speed').value)||650);}
-/** Três áreas objetivas: editor, acompanhamento dinâmico e referência estática. */
-let viewMode='code';
-const isDynamic=tab=>tab==='simulator'||tab==='tree';
-const isStatic=tab=>tab==='tokens'||tab==='grammar'||tab==='errors';
-function setMode(mode,tab){
-  if(!['code','dynamic','static'].includes(mode))return;
-  viewMode=mode;
-  if(mode==='dynamic')state.tab=isDynamic(tab)?tab:(isDynamic(state.tab)?state.tab:'simulator');
-  if(mode==='static')state.tab=isStatic(tab)?tab:(isStatic(state.tab)?state.tab:'tokens');
-  $$('.studio-view').forEach(el=>{el.hidden=el.id!=='view-'+mode;});
-  $$('.nav-item').forEach(el=>{const active=el.dataset.mode===mode;el.classList.toggle('active',active);if(active)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});
-  $('#workspaceTitle').textContent={code:'Código',dynamic:'Análise dinâmica',static:'Dados estáticos'}[mode];
-  if(mode!=='code'){
-    $(mode==='dynamic'?'#dynamicSlot':'#staticSlot').appendChild($('#inspectorPane'));
-    $('#inspectorPane').dataset.group=mode;
-    $$('.tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===state.tab));
-    renderInspector();
-    if(mode==='dynamic')updateTimeline();
+function setStep(index){
+  const steps=state.result?.passos??[];if(!steps.length)return;
+  state.step=Math.max(0,Math.min(steps.length-1,index));state.selectedToken=-1;state.manualFocus=null;
+  if(state.followState)state.inspectState=steps[state.step].detalhes.estado;
+  updateTimeline();renderDynamic();refreshEditor();if(state.mode==='static')renderStatic();
+}
+function play(){
+  if(state.playing){pause();return;}
+  if((state.result?.passos.length??0)<2)return;
+  if(state.step===state.result.passos.length-1)setStep(0);
+  state.playing=true;updateTimeline();
+  state.interval=setInterval(()=>{if(state.step>=state.result.passos.length-1){pause();updateTimeline();return;}setStep(state.step+1);},state.speed);
+}
+async function runAnalysis(){
+  if(!window.studio){toast('A análise só está disponível dentro do aplicativo Electron.');return;}
+  pause();const currentSource=input.value,version=state.sourceVersion;
+  state.analyzing=true;$('#btnRun').disabled=true;$('#btnRun').textContent='Analisando...';status('Analisando código...');
+  try{
+    const result=await window.studio.analyze(currentSource);
+    if(version!==state.sourceVersion){toast('O código foi editado: o resultado anterior foi descartado.');return;}
+    state.result=result;state.step=0;state.selectedToken=-1;state.manualFocus=null;state.selectedError=0;state.collapsed.clear();state.followState=true;
+    refreshSummary();updateTimeline();renderDynamic();renderStatic();refreshEditor();
+    if(result.errosLexicos.length){state.staticTab='errors';setMode('static');}
+    else{state.dynamicTab='simulator';setMode('dynamic');}
+    status(result.aceito?'Programa aceito sintaticamente':`Análise terminou com ${result.errosLexicos.length+result.errosSintaticos.length} erros.`);
+  }catch(error){toast('Não foi possível analisar: '+String(error?.message||error));status('Análise interrompida');}
+  finally{state.analyzing=false;$('#btnRun').disabled=false;$('#btnRun').innerHTML='<span aria-hidden="true">▶</span> Analisar código';}
+}
+function empty(title,text=''){return `<div class="empty-state"><div><strong>${escapeHTML(title)}</strong><p>${escapeHTML(text)}</p></div></div>`;}
+function renderSimulator(){
+  const trace=state.result?.passos[state.step];if(!trace)return empty('Sem passos SLR(1)','Faça uma análise para acompanhar a pilha e as decisões do Parser.');
+  const d=trace.detalhes,p=state.grammar?.productions[d.producao];
+  const operation=d.tipo==='SHIFT'?`SHIFT → q${d.destinoShift}`:d.tipo==='REDUCE'?`REDUCE r${d.producao}`:d.tipo;
+  return `<div class="detail-grid">
+    <div class="detail-card"><div class="label">Estado consultado</div><div class="value">q${d.estado}</div></div>
+    <div class="detail-card"><div class="label">Token de entrada</div><div class="value" title="${escapeHTML(d.token?.lexema||'$')}">${escapeHTML(d.token?.lexema||'$')}</div></div>
+    <div class="detail-card"><div class="label">Terminal</div><div class="value">${escapeHTML(d.terminal)}</div></div>
+    <div class="detail-card"><div class="label">Decisão da tabela ACTION</div><div class="value">${escapeHTML(operation)}</div></div>
+  </div>
+  <div class="section-label">Pilha antes da operação</div>
+  <div class="stack-chips"><span class="chip state">0</span>${d.simbolos.map((sym,i)=>`<span class="chip">${escapeHTML(sym)}</span><span class="chip state">${d.estados[i+1]}</span>`).join('')}</div>
+  ${p?`<div class="section-label">Produção reconhecida</div><div class="code-box">[${p.id}] ${escapeHTML(p.lhs)} → ${escapeHTML(p.rhs.join(' ')||'ε')}</div>`:''}
+  <div class="section-label">Próximos símbolos</div><div class="code-box">${escapeHTML(trace.entrada)}</div>
+  <p class="hint">A pilha representa o estado imediatamente anterior à ação. A árvore representa as reduções aplicadas até a etapa selecionada.</p>`;
+}
+function renderTree(){
+  const r=state.result,g=state.grammar;if(!r?.passos.length||!g)return empty('Árvore ainda não construída','Execute a análise e avance pelas reduções.');
+  const built=tree.build(r.passos,g.productions,state.step),layout=tree.layout(built.roots,state.collapsed,360);
+  const nodeW=148,nodeH=48;
+  const edges=layout.edges.map(e=>`<path class="tree-edge" d="M${e.x1} ${e.y1} C${e.x1} ${e.y1+25} ${e.x2} ${e.y2-25} ${e.x2} ${e.y2}"/>`).join('');
+  const nodes=layout.nodes.map(n=>{
+    const label=n.label.length>17?n.label.slice(0,16)+'…':n.label;
+    return `<g class="tree-node-svg ${n.terminal?'terminal':''}" data-node="${n.id}" role="button" tabindex="0" aria-label="${escapeHTML(n.label)}" transform="translate(${n.x},${n.y})"><title>${escapeHTML(n.label)}${n.production?' — Produção '+n.production.id:''}</title><rect width="${nodeW}" height="${nodeH}" rx="9"/><text x="${nodeW/2}" y="${nodeH/2+5}" text-anchor="middle">${escapeHTML(label)}</text>${n.hasChildren?`<text x="137" y="15" text-anchor="end" style="font-size:13px">${n.collapsed?'+':'−'}</text>`:''}</g>`;
+  }).join('');
+  const graphic=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${layout.width} ${layout.height}" width="${Math.round(layout.width*state.zoom)}" height="${Math.round(layout.height*state.zoom)}" aria-label="Árvore gráfica de derivação">${edges}${nodes}</svg>`;
+  return `<div class="tree-actions"><strong>Derivação até a etapa ${state.step+1}</strong><div><button id="treeZoomOut" title="Diminuir zoom">−</button><button id="treeZoomReset" title="Zoom padrão">${Math.round(state.zoom*100)}%</button><button id="treeZoomIn" title="Aumentar zoom">+</button><button id="treeExpand" title="Expandir todos os nós">Expandir todos</button><button id="treeExport" title="Exportar árvore em SVG">Exportar SVG</button></div></div>
+    ${built.interrupted?`<p class="tree-caption">${escapeHTML(built.reason)}</p>`:''}
+    ${layout.truncated?'<p class="tree-caption">Árvore extensa: alguns nós foram omitidos para preservar o desempenho. Recolha ramos para explorar melhor.</p>':''}
+    <div class="tree-canvas" id="treeCanvas">${graphic}</div>
+    <p class="tree-caption">Clique nos nós para recolher ou expandir ramos. SHIFT cria folhas; REDUCE agrupa os símbolos reconhecidos.</p>`;
+}
+function renderDynamic(){
+  $$('.analysis-tabs button[data-dynamic-tab]').forEach(b=>{const active=b.dataset.dynamicTab===state.dynamicTab;b.classList.toggle('active',active);b.setAttribute('aria-selected',active?'true':'false');});
+  $('#dynamicContent').innerHTML=state.dynamicTab==='tree'?renderTree():renderSimulator();
+}
+function renderTokens(){
+  const tokens=state.result?.tokens??[];
+  if(!tokens.length)return empty('Ainda não há tokens','Analise um código para ver os tokens reconhecidos pelo Lexer.');
+  return `<p class="hint">Clique em um token para abrir a sua localização no editor.</p><div class="table-scroll"><table class="data-table"><thead><tr><th>#</th><th>Lexema</th><th>Tipo</th><th>Terminal</th><th>Posição</th></tr></thead><tbody>${tokens.map((t,i)=>`<tr data-token="${i}" class="${state.selectedToken===i?'selected':''}"><td>${i+1}</td><td class="mono">${escapeHTML(t.lexema)}</td><td>${escapeHTML(t.descricao)}</td><td class="mono">${escapeHTML(t.terminal)}</td><td>${t.linha}:${t.coluna}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function errorsList(){const r=state.result;return [...(r?.errosLexicos||[]).map(e=>({...e,kind:'Léxico'})),...(r?.errosSintaticos||[]).map(e=>({...e,kind:'Sintático'}))];}
+function renderErrors(){
+  if(!state.result)return empty('Sem diagnósticos','Execute uma análise primeiro.');
+  const errors=errorsList();if(!errors.length)return '<div class="healthy">✓ Nenhum erro encontrado na análise léxica ou sintática.</div>';
+  return `<div class="error-nav"><strong>${errors.length} diagnóstico${errors.length===1?'':'s'}</strong><div><button type="button" class="small-button" id="prevError" title="Erro anterior">◀ Anterior</button> <button type="button" class="small-button" id="nextError" title="Próximo erro">Próximo ▶</button></div></div>
+    ${errors.map((e,i)=>`<div class="problem" data-error="${i}"><strong>${escapeHTML(e.kind)} · Linha ${e.linha}, coluna ${e.coluna}</strong><p>${escapeHTML(e.mensagem)}</p><button type="button" data-error="${i}">Ver no código</button></div>`).join('')}`;
+}
+function renderGrammar(){
+  const g=state.grammar;if(!g)return empty('Carregando a gramática...');
+  const selected=Math.max(0,Math.min(g.states.length-1,state.inspectState)),p=g.productions;
+  let content='';
+  if(state.grammarTab==='rules')content=`<div class="table-scroll"><table class="data-table"><thead><tr><th>Regra</th><th>Produção</th></tr></thead><tbody>${p.map(a=>`<tr><td>${a.id}</td><td class="mono">${escapeHTML(a.lhs)} → ${escapeHTML(a.rhs.join(' ')||'ε')}</td></tr>`).join('')}</tbody></table></div>`;
+  else if(state.grammarTab==='sets')content=`<div class="table-scroll"><table class="data-table"><thead><tr><th>Não terminal</th><th>FIRST</th><th>FOLLOW</th></tr></thead><tbody>${g.nonterminals.map(nt=>`<tr><td class="mono">${escapeHTML(nt)}</td><td>${escapeHTML((g.first[nt]||[]).join(', '))}</td><td>${escapeHTML((g.follow[nt]||[]).join(', '))}</td></tr>`).join('')}</tbody></table></div>`;
+  else if(state.grammarTab==='table')content=`<div class="table-scroll"><table class="data-table"><thead><tr><th>Terminal</th><th>ACTION[q${selected}]</th></tr></thead><tbody>${Object.entries(g.actions[selected]||{}).map(([term,a])=>`<tr class="${state.result?.passos[state.step]?.detalhes.terminal===term?'selected':''}"><td>${escapeHTML(term)}</td><td>${escapeHTML(a.kind==='SHIFT'?'SHIFT q'+a.value:a.kind==='REDUCE'?'REDUCE '+a.value:'ACCEPT')}</td></tr>`).join('')}</tbody></table></div><div class="section-label">GOTO</div><div class="stack-chips">${Object.entries(g.gotos[selected]||{}).map(([term,to])=>`<span class="chip">${escapeHTML(term)} → q${to}</span>`).join('')||'Sem transições GOTO'}</div>`;
+  else content=`<div class="state-lines">${g.states[selected].map(([pid,dot])=>{const prod=p[pid],parts=[...prod.rhs];parts.splice(dot,0,'•');return escapeHTML(`[${pid}] ${prod.lhs} → ${parts.join(' ')}`);}).join('\n')}</div><div class="section-label">Transições LR(0)</div><div class="transition-list">${Object.entries(g.transitions[selected]||{}).map(([term,to])=>`<button type="button" data-state="${to}">${escapeHTML(term)} → q${to}</button>`).join('')||'Nenhuma transição'}</div>`;
+  return `<p class="hint">${g.productions.length} produções · ${g.states.length} estados LR(0) · SLR(1) sem conflitos.</p>
+  <div class="tab-buttons">${[['states','Estados LR(0)'],['table','ACTION / GOTO'],['sets','FIRST / FOLLOW'],['rules','Produções']].map(([key,title])=>`<button type="button" data-grammar="${key}" class="${state.grammarTab===key?'active':''}">${title}</button>`).join('')}</div>
+  ${['states','table'].includes(state.grammarTab)?`<div class="state-tools"><label for="stateSelect">Estado</label><select id="stateSelect">${g.states.map((_,i)=>`<option value="${i}" ${i===selected?'selected':''}>q${i}</option>`).join('')}</select><button class="small-button" type="button" id="btnCurrentState">Acompanhar estado atual</button></div>`:''}${content}`;
+}
+function renderStatic(){
+  $$('.analysis-tabs button[data-static-tab]').forEach(b=>{const active=b.dataset.staticTab===state.staticTab;b.classList.toggle('active',active);b.setAttribute('aria-selected',active?'true':'false');});
+  $('#staticContent').innerHTML=({tokens:renderTokens,grammar:renderGrammar,errors:renderErrors}[state.staticTab]||renderTokens)();
+}
+function jumpToCode(line,col=1,length=1){
+  setMode('code');const pos=offsetAt(input.value,line,col);
+  state.selectedToken=-1;state.manualFocus={linha:Number(line),coluna:Number(col),lexema:sourceLine(input.value,line).slice(Math.max(0,col-1),Math.max(0,col-1)+Math.max(1,length))};
+  // Seleção visual na camada de syntax highlight e no próprio editor.
+  input.focus();input.setSelectionRange(pos,pos+Math.max(1,length));
+  const lineHeight=parseFloat(getComputedStyle(input).lineHeight)||27;
+  input.scrollTop=Math.max(0,(Number(line)-3)*lineHeight);refreshEditor();
+}
+function saveReport(){
+  if(!state.result){toast('Analise o código antes de exportar.');return;}
+  const r=state.result;
+  const lines=[`MiniPascal Studio v5.2.0 — ${state.fileName}`,`ESTADOS=${r.estados}`,`ACEITO=${r.aceito}`];
+  r.tokens.forEach(t=>lines.push(`TOK=<${t.lexema}, ${t.descricao}> [linha ${t.linha}, coluna ${t.coluna}]`));
+  r.errosLexicos.forEach(e=>lines.push(`LEX=Linha ${e.linha}, coluna ${e.coluna}: ${e.mensagem}`));
+  r.errosSintaticos.forEach(e=>lines.push(`SYN=Linha ${e.linha}, coluna ${e.coluna}: ${e.mensagem}`));
+  r.passos.forEach(p=>lines.push(`STEP=${p.passo}|${p.pilha}|${p.entrada}|${p.acao}`));
+  window.studio?.exportReport(lines.join('\n')+'\n').then(ok=>{if(ok)toast('Relatório exportado com sucesso.');}).catch(e=>toast(e.message));
+}
+async function saveFile(saveAs=false){
+  try{
+    const content=input.value;
+    const result=await window.studio?.saveFile({content,name:state.fileName,path:state.filePath,saveAs});
+    if(!result)return false;
+    state.fileName=result.name;state.filePath=result.path;$('#selectedExample').textContent=state.fileName;
+    if(input.value===content)setDirty(false);
+    status('Arquivo salvo: '+result.name);return !state.dirty;
+  }catch(error){toast('Erro ao salvar: '+error.message);return false;}
+}
+function confirmDiscard(){return !state.dirty||window.confirm('Há alterações não salvas. Descartar essas alterações?');}
+function newFile(){if(!confirmDiscard())return;changeSource('program novo;\nbegin\n  \nend.','novo.pas',true);setMode('code');input.focus();}
+async function openFile(){
+  if(!confirmDiscard())return;
+  try{const file=await window.studio?.openFile();if(!file)return;changeSource(file.content,file.name,false);state.filePath=file.path;setMode('code');status('Arquivo aberto: '+file.name);}
+  catch(e){toast('Não foi possível abrir: '+e.message);}
+}
+async function openExample(button){
+  if(!confirmDiscard())return;
+  try{const content=await window.studio?.loadSample(button.dataset.example);if(content===undefined)return;
+    changeSource(content,button.dataset.example,false);$('#selectedExample').textContent=button.textContent.trim();
+    $$('#examples [data-example]').forEach(e=>e.classList.toggle('active',e===button));closeExamples();setMode('code');}
+  catch(error){toast('Não foi possível abrir o exemplo: '+error.message);}
+}
+async function closeRequest(){
+  if(!window.studio)return;
+  if(state.dirty){
+    const choice=await window.studio.closeChoice();
+    if(choice==='cancel')return;
+    if(choice==='save'&&!(await saveFile()))return;
   }
-  closeExamples();
+  await window.studio.closeApp();
 }
-function setView(tab){setMode(isDynamic(tab)?'dynamic':'static',tab);}
-function closeExamples(){const menu=$('#examplesMenu');menu.hidden=true;$('#btnExamples').setAttribute('aria-expanded','false');}
-
-function pills(items){return items.map(x=>`<span class="chip">${escapeHTML(x)}</span>`).join('');}
-function detailStep(){const trace=state.result?.passos[state.step];if(!trace)return '<div class="empty"><div class="empty-symbol">⇄</div><h3>Nenhum passo registrado</h3><p>Faça uma análise sintática para percorrer as operações.</p></div>';
-  const d=trace.detalhes,p=state.grammar?.productions[d.producao],kind=d.tipo.toLowerCase();
-  return `<div class="detail-head"><div><div class="minor-label">OPERAÇÃO ATUAL</div><div class="muted-small">Etapa ${trace.passo} de ${state.result.passos.length}</div></div><span class="action-tag ${kind}">${kind==='error'?'ERRO':d.tipo}</span></div>
-    <div class="detail-grid"><div class="detail-card"><div class="minor-label">ESTADO</div><div class="val">q${d.estado}</div></div><div class="detail-card"><div class="minor-label">TOKEN ATUAL</div><div class="val" title="${escapeHTML(d.token.lexema||'$')}">${escapeHTML(d.token.lexema||'$')}</div></div>
-    <div class="detail-card"><div class="minor-label">TERMINAL</div><div class="val">${escapeHTML(d.terminal)}</div></div><div class="detail-card"><div class="minor-label">ACTION / GOTO</div><div class="val">${d.tipo==='SHIFT'?`s${d.destinoShift}`:d.tipo==='REDUCE'?`r${d.producao} → ${d.destinoGoto}`:d.tipo==='ACCEPT'?'acc':'—'}</div></div></div>
-    <div class="minor-label">PILHA DO ANALISADOR</div><div class="stack-chips"><span class="chip state">0</span>${d.simbolos.map((s,i)=>`<span class="chip">${escapeHTML(s)}</span><span class="chip state">${d.estados[i+1]}</span>`).join('')}</div>
-    <div class="minor-label" style="margin-top:11px">ENTRADA RESTANTE</div><div class="grammar-box">${escapeHTML(trace.entrada)}</div>
-    ${p?`<div class="minor-label" style="margin-top:13px">PRODUÇÃO UTILIZADA</div><div class="grammar-box">[${p.id}] ${escapeHTML(p.lhs)} → ${escapeHTML(p.rhs.join(' ')||'ε')}</div>`:''}
-    `;
-}
-function rowToken(t,i){return `<tr data-token="${i}" class="${state.selectedToken===i?'selected':''}"><td class="mono">${i+1}</td><td class="mono">${escapeHTML(t.lexema)}</td><td>${escapeHTML(t.descricao)}</td><td class="mono">${escapeHTML(t.terminal)}</td><td class="mono">${t.linha}:${t.coluna}</td></tr>`;}
-function tokenView(){const toks=state.result?.tokens||[];return `<div class="detail-head"><div><div class="minor-label">SAÍDA DO ANALISADOR LÉXICO</div><strong>${toks.length} tokens reconhecidos</strong></div><span class="action-tag">LEXER</span></div>${toks.length?`<div class="table-scroll"><table class="data-table"><thead><tr><th>#</th><th>Lexema</th><th>Tipo</th><th>Terminal</th><th>Pos.</th></tr></thead><tbody>${toks.map(rowToken).join('')}</tbody></table></div><p class="hint">Selecione um token para localizá-lo no editor. O terminal é o símbolo entregue ao Parser SLR(1).</p>`:'<p class="ghost-note">Não há tokens para exibir.</p>'}`;}
-function errorView(){const r=state.result,all=[...(r?.errosLexicos||[]).map(e=>({...e,tipo:'Léxico'})),...(r?.errosSintaticos||[]).map(e=>({...e,tipo:'Sintático'}))];
-  if(!all.length)return '<div class="healthy">✓ &nbsp; Nenhum erro encontrado nesta análise.<p class="hint">Para visualizar a recuperação de erros, abra os exemplos inválidos.</p></div>';
-  return `<div class="minor-label">${all.length} DIAGNÓSTICO(S)</div>${all.map(e=>`<div class="problem" data-line="${e.linha}" data-col="${e.coluna}"><strong>${escapeHTML(e.tipo)} · Linha ${e.linha}, coluna ${e.coluna}</strong><p>${escapeHTML(e.mensagem)}</p></div>`).join('')}`;
-}
-function grammarView(){const g=state.grammar;if(!g)return '<p class="ghost-note">Carregando a gramática...</p>';
-  const selected=Math.max(0,Math.min(state.inspectState,g.states.length-1));let content='';
-  if(state.grammarTab==='rules')content=`<div class="table-scroll" style="max-height:240px"><table class="data-table"><thead><tr><th>#</th><th>Produção</th></tr></thead><tbody>${g.productions.map(p=>`<tr><td>${p.id}</td><td class="mono">${escapeHTML(p.lhs)} → ${escapeHTML(p.rhs.join(' ')||'ε')}</td></tr>`).join('')}</tbody></table></div>`;
-  else if(state.grammarTab==='sets')content=`<div class="table-scroll" style="max-height:240px"><table class="data-table"><thead><tr><th>Não terminal</th><th>FIRST</th><th>FOLLOW</th></tr></thead><tbody>${g.nonterminals.map(nt=>`<tr><td class="mono">${escapeHTML(nt)}</td><td>${escapeHTML((g.first[nt]||[]).join(', '))}</td><td>${escapeHTML((g.follow[nt]||[]).join(', '))}</td></tr>`).join('')}</tbody></table></div>`;
-  else if(state.grammarTab==='table'){
-    const entries=Object.entries(g.actions[selected]||{}).map(([k,v])=>`<tr class="${state.result?.passos[state.step]?.detalhes?.terminal===k?'selected':''}"><td class="mono">${escapeHTML(k)}</td><td class="mono">${v.kind==='SHIFT'?'s'+v.value:v.kind==='REDUCE'?'r'+v.value:'acc'}</td></tr>`).join('');
-    content=`<div class="table-scroll" style="max-height:200px"><table class="data-table"><thead><tr><th>Terminal</th><th>ACTION[${selected}, ...]</th></tr></thead><tbody>${entries}</tbody></table></div><div class="minor-label" style="margin-top:12px">GOTO</div><div class="stack-chips">${Object.entries(g.gotos[selected]||{}).map(([k,v])=>`<span class="chip">${escapeHTML(k)} → ${v}</span>`).join('')||'Sem desvios'}</div>`;
-  }else{
-    content=`<div class="state-lines">${g.states[selected].map(([pid,dot])=>{const p=g.productions[pid],parts=[...p.rhs];parts.splice(dot,0,'•');return escapeHTML(`[${pid}] ${p.lhs} → ${parts.join(' ')}`);}).join('\n')}</div><div class="minor-label" style="margin-top:12px">TRANSIÇÕES LOCAIS</div><div style="max-height:90px;overflow:auto">${Object.entries(g.transitions[selected]||{}).map(([k,v])=>`<button class="transition" style="width:100%" data-state="${v}"><span>${escapeHTML(k)}</span><strong>q${v} →</strong></button>`).join('')||'<p class="ghost-note">Nenhuma transição</p>'}</div>`;
-  }
-  return `<div class="detail-head"><div><div class="minor-label">GRAMÁTICA SLR(1)</div><strong>${g.productions.length} produções · ${g.states.length} estados</strong></div><span class="action-tag accept">0 conflitos</span></div>
-    <div class="segment-control"><button data-grammar="states" class="${state.grammarTab==='states'?'active':''}">Estados LR(0)</button><button data-grammar="table" class="${state.grammarTab==='table'?'active':''}">ACTION/GOTO</button><button data-grammar="sets" class="${state.grammarTab==='sets'?'active':''}">FIRST/FOLLOW</button><button data-grammar="rules" class="${state.grammarTab==='rules'?'active':''}">Produções</button></div>
-    ${['states','table'].includes(state.grammarTab)?`<div class="inspector-actions"><span class="muted-small">Estado</span><select id="stateSelect">${g.states.map((_,i)=>`<option value="${i}" ${i===selected?'selected':''}>q${i}</option>`).join('')}</select><button class="subtle-button" id="toCurrent">Estado da etapa</button></div>`:''}${content}`;
-}
-function treeView(){const r=state.result,g=state.grammar;if(!r?.passos.length)return '<p class="ghost-note">Execute a análise para construir a árvore de derivação.</p>';
-  const stack=[];let partial=false,limit=false;
-  for(let i=0;i<state.step;i++){
-    const d=r.passos[i].detalhes;
-    if(d.tipo==='ERROR'){partial=true;break;}
-    if(d.tipo==='SHIFT')stack.push({label:d.token.lexema||d.terminal,leaf:true,children:[]});
-    if(d.tipo==='REDUCE'){
-      const p=g.productions[d.producao],num=p.rhs.length,children=num?stack.splice(stack.length-num,num):[{label:'ε',leaf:true,children:[]}];
-      stack.push({label:p.lhs,leaf:false,children});
-    }
-    if(stack.length>2000){limit=true;break;}
-  }
-  let seen=0;
-  function treeHtml(node,depth=0){if(!node||depth>15||seen++>800)return '<span class="ghost-note">…</span>';
-    return `<div class="tree-node"><span class="tree-label ${node.leaf?'leaf':''}">${escapeHTML(node.label)}</span>${node.children?.map(x=>treeHtml(x,depth+1)).join('')||''}</div>`;
-  }
-  return `<div class="detail-head"><div><div class="minor-label">DERIVAÇÃO CONCRETA</div><strong>Árvore até a etapa ${state.step+1}</strong></div><span class="action-tag ${partial?'error':''}">${partial?'Parcial':'Em construção'}</span></div><div class="ghost-note" style="margin-bottom:12px">A árvore é reconstruída a partir dos SHIFT/REDUCE anteriores à etapa selecionada.</div><div style="max-height:240px;overflow:auto">${stack.length?stack.map(x=>treeHtml(x)).join(''):'<p class="ghost-note">Avance nas operações para formar os nós.</p>'}</div>${partial?'<p class="hint error-count">A recuperação de erros interrompe a árvore íntegra.</p>':''}${limit?'<p class="hint">Visualização limitada por desempenho.</p>':''}`;
-}
-function renderInspector(){const root=$('#inspectorContent');if(!state.result&&state.tab!=='grammar'){root.innerHTML='<div class="empty compact-empty"><p>Execute uma análise para visualizar os dados.</p></div>';return;}
-  root.innerHTML=({simulator:detailStep,tokens:tokenView,grammar:grammarView,errors:errorView,tree:treeView}[state.tab]||detailStep)();
-  if(state.tab==='grammar')$('#stepBadge').textContent=`${state.grammar?.states.length||130} estados LR(0)`;
-}
-function jump(line,col=1,length=1){input.focus();const pos=posToOffset(line,col);input.setSelectionRange(pos,pos+length);refreshEditor();}
-// Ações de navegação e inspeção da bancada.
-$$('.tab').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.tab)));
-$$('.nav-item').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
-$('#btnExamples').addEventListener('click',()=>{const menu=$('#examplesMenu');const open=menu.hidden;menu.hidden=!open;$('#btnExamples').setAttribute('aria-expanded',String(open));});
-document.addEventListener('click',e=>{if(!e.target.closest('#examplePicker'))closeExamples();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeExamples();});
-$('#btnImport').addEventListener('click',()=>$('#btnOpen').click());
-$('#btnHelp').addEventListener('click',()=>setView('grammar'));
-$('#inspectorContent').addEventListener('click',e=>{
-  const token=e.target.closest('[data-token]');if(token&&state.result){state.selectedToken=Number(token.dataset.token);const t=state.result.tokens[state.selectedToken];jump(t.linha,t.coluna,t.lexema.length);renderInspector();return;}
-  const err=e.target.closest('[data-line]');if(err){jump(Number(err.dataset.line),Number(err.dataset.col));return;}
-  const gram=e.target.closest('[data-grammar]');if(gram){state.grammarTab=gram.dataset.grammar;renderInspector();return;}
-  const tr=e.target.closest('[data-state]');if(tr){state.inspectState=Number(tr.dataset.state);renderInspector();return;}
-  if(e.target.closest('#toCurrent')){state.inspectState=state.result?.passos[state.step]?.detalhes.estado||0;renderInspector();}
-});
-$('#inspectorContent').addEventListener('change',e=>{if(e.target.id==='stateSelect'){state.inspectState=Number(e.target.value);renderInspector();}});
-$('#btnRun').addEventListener('click',runAnalysis);$('#btnFirst').addEventListener('click',()=>setStep(0));$('#btnLast').addEventListener('click',()=>setStep((state.result?.passos.length||1)-1));$('#btnPrev').addEventListener('click',()=>{pause();setStep(state.step-1);});$('#btnNext').addEventListener('click',()=>{pause();setStep(state.step+1);});$('#btnPlay').addEventListener('click',play);$('#speed').addEventListener('change',()=>{if(state.playing){pause();play();}});$('#stepRange').addEventListener('input',e=>{pause();setStep(Number(e.target.value));});
-$('#btnPresentation').addEventListener('click',()=>{document.body.classList.toggle('presentation');$('#btnPresentation').textContent=document.body.classList.contains('presentation')?'⛶ Sair da apresentação':'⛶ Apresentação';});
-$('#btnFontPlus').addEventListener('click',()=>resizeFont(1));$('#btnFontMinus').addEventListener('click',()=>resizeFont(-1));
-function resizeFont(delta){state.font=Math.max(11,Math.min(21,state.font+delta));$('#codeInput').style.fontSize=state.font+'px';$('#codeHighlight').style.fontSize=state.font+'px';$('#lineNumbers').style.fontSize=state.font+'px';}
-input.addEventListener('input',()=>{invalidate();refreshEditor();});input.addEventListener('scroll',scrollTogether);input.addEventListener('click',cursorInfo);input.addEventListener('keyup',cursorInfo);
-input.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const start=input.selectionStart,end=input.selectionEnd;input.setRangeText('  ',start,end,'end');input.dispatchEvent(new Event('input'));}});
-function confirmDiscard(){return !state.dirty||window.confirm('O código foi alterado e não foi salvo. Deseja descartá-lo?');}
-$('#btnNew').addEventListener('click',()=>{if(!confirmDiscard())return;changeSource('program novo;\nbegin\n  \nend.','novo.pas');state.filePath=null;});
-$('#btnOpen').addEventListener('click',async()=>{if(!confirmDiscard())return;try{const d=await window.studio?.openFile();if(!d)return;changeSource(d.content,d.name);state.filePath=d.path;setDirty(false);status('Arquivo aberto: '+d.name);}catch(e){notify(e.message);}});
-async function saveFile(saveAs=false){try{const d=await window.studio?.saveFile({name:state.fileName,path:state.filePath,content:input.value,saveAs});if(d){state.filePath=d.path;state.fileName=d.name;$('#filename').textContent=d.name;$('#selectedExample').textContent=d.name;setDirty(false);status('Arquivo salvo: '+d.name);}}catch(e){notify(e.message);}}
-$('#btnSave').addEventListener('click',()=>saveFile());
-$('#btnExport').addEventListener('click',async()=>{if(!state.result){notify('Analise o código antes de exportar.');return;}try{const ok=await window.studio?.exportReport(reportText(state.result));if(ok)notify('Relatório exportado.');}catch(e){notify(e.message);}});
-$('#examples').addEventListener('click',async e=>{
-  const b=e.target.closest('[data-example]');if(!b)return;if(!confirmDiscard())return;
-  try{const s=await window.studio?.loadSample(b.dataset.example);if(s===undefined)return;changeSource(s,b.dataset.example);$('#selectedExample').textContent=b.textContent.trim();$$('[data-example]').forEach(x=>x.classList.toggle('active',x===b));setDirty(false);closeExamples();setMode('code');status('Exemplo aberto: '+b.dataset.example);}catch(err){notify(err.message);}
-});
-document.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey))return;
-  const k=e.key.toLowerCase();if(k==='enter'){e.preventDefault();runAnalysis();}else if(k==='s'){e.preventDefault();saveFile(e.shiftKey);}else if(k==='o'){e.preventDefault();$('#btnOpen').click();}else if(k==='1'){e.preventDefault();setMode('code');}else if(k==='2'){e.preventDefault();setMode('dynamic');}else if(k==='3'){e.preventDefault();setMode('static');}else if(k==='4'){e.preventDefault();setView('grammar');}
-});
-// Atualizações oficiais: a instalação só ocorre quando o usuário autoriza.
 function updatePanel(data){
-  if(!data || typeof data!=='object')return;
-  currentUpdate=data;
-  $('#updateVersion').textContent='v'+String(data.version||'5.1.1');
+  if(!data||typeof data!=='object')return;state.update=data;
+  $('#updateVersion').textContent='v'+String(data.version||'5.2.0');
   $('#updateMessage').textContent=String(data.message||'');
-  const pct=Number(data.progress);
-  $('#updateProgressWrap').hidden=!(data.status==='downloading' && Number.isFinite(pct));
-  $('#updateProgressBar').style.width=(Number.isFinite(pct)?Math.min(100,Math.max(0,pct)):0)+'%';
-  const button=$('#btnUpdate');
-  const labels={checking:'Verificando...',available:'Baixar atualização',downloading:'Baixando...',downloaded:'Instalar e reiniciar',installing:'Instalando...',current:'Verificar novamente',preparing:'Nova tentativa agendada',error:'Tentar novamente',idle:'Verificar atualizações',manual:'Abrir Releases'};
-  button.textContent=labels[data.status]||'Verificar atualizações';
-  button.disabled=['checking','preparing','downloading','installing'].includes(data.status);
-  $('#updateDot').className='update-status-dot '+(data.status==='downloaded'?'ready':data.status==='available'?'available':data.status==='error'?'failed':'');
-  $('#btnUpdatesTop').title=String(data.message||'Atualizações');
-  $('#btnUpdatesTop').textContent=data.status==='downloaded'?'⬆':data.status==='available'?'●':'↻';
+  const p=Number(data.progress);
+  $('#updateProgressWrap').hidden=!(data.status==='downloading'&&Number.isFinite(p));
+  $('#updateProgressBar').style.width=(Number.isFinite(p)?Math.min(100,Math.max(0,p)):0)+'%';
+  const labels={checking:'Verificando...',preparing:'Nova tentativa agendada',available:'Baixar atualização',downloading:'Baixando...',downloaded:'Instalar e reiniciar',installing:'Instalando...',current:'Verificar novamente',error:'Tentar novamente',idle:'Verificar',manual:'Abrir Releases'};
+  $('#btnUpdate').textContent=labels[data.status]||'Verificar';
+  $('#btnUpdate').disabled=['checking','preparing','downloading','installing'].includes(data.status);
 }
 async function handleUpdate(){
   if(!window.studio)return;
   try{
-    if(!currentUpdate?.canAutoUpdate){await window.studio.openReleases();return;}
-    if(currentUpdate.status==='available'){await window.studio.downloadUpdate();return;}
-    if(currentUpdate.status==='downloaded'){
-      const warning=state.dirty?'Seu código possui alterações não salvas. Salve-o antes de continuar.\n\n':'';
-      if(!window.confirm(warning+'Instalar a nova versão e reiniciar o MiniPascal Studio agora?'))return;
-      if(state.dirty){await saveFile();if(state.dirty){notify('Salve o código antes de instalar.');return;}}
+    const data=state.update;
+    if(!data?.canAutoUpdate){await window.studio.openReleases();return;}
+    if(data.status==='available'){await window.studio.downloadUpdate();return;}
+    if(data.status==='downloaded'){
+      if(!window.confirm('Instalar a nova versão e reiniciar o MiniPascal Studio?'))return;
+      if(state.dirty&&!(await saveFile())){toast('Salve o código antes de instalar.');return;}
       await window.studio.installUpdate();return;
     }
     await window.studio.checkForUpdates();
-  }catch(err){notify('Atualização: '+String(err.message||err));}
+  }catch(error){toast('Atualização: '+String(error.message||error));}
 }
-$('#btnUpdate').addEventListener('click',handleUpdate);
-$('#btnUpdatesTop').addEventListener('click',handleUpdate);
-$('#btnReleases').addEventListener('click',async()=>{try{await window.studio?.openReleases();}catch(err){notify(err.message);}});
-async function init(){try{if(!window.studio){status('Pré-visualização visual — execute com npm start');return;}
-  window.studio.onUpdateState(updatePanel);updatePanel(await window.studio.updateStatus());state.grammar=await window.studio.grammar();state.examples=await window.studio.samples();$('#examples').innerHTML=state.examples.map((f,i)=>`<button class="example-item" data-example="${escapeHTML(f.name)}"><span class="example-dot"></span><span>${escapeHTML(f.title)}</span></button>`).join('');updateStats();renderInspector();
-}catch(err){notify(err.message);}}
-setDirty(false);refreshEditor();updateTimeline();init();
+function bindUI(){
+  $$('.nav-item').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+  $('#btnRun').addEventListener('click',runAnalysis);
+  $('#btnExamples').addEventListener('click',()=>{const menu=$('#examplesMenu'),open=menu.hidden;menu.hidden=!open;$('#btnExamples').setAttribute('aria-expanded',String(open));});
+  document.addEventListener('click',event=>{if(!event.target.closest('#examplePicker'))closeExamples();});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape')closeExamples();});
+  $('#examples').addEventListener('click',event=>{const el=event.target.closest('[data-example]');if(el)openExample(el);});
+  $('#btnNew').addEventListener('click',newFile);$('#btnImport').addEventListener('click',openFile);
+  $('#btnSave').addEventListener('click',()=>saveFile());$('#btnExport').addEventListener('click',saveReport);
+  $('#btnHelp').addEventListener('click',()=>{state.staticTab='grammar';state.grammarTab='rules';setMode('static');});
+  $('#btnFontPlus').addEventListener('click',()=>{state.font=Math.min(23,state.font+1);applyPreferences();savePreferences();});
+  $('#btnFontMinus').addEventListener('click',()=>{state.font=Math.max(13,state.font-1);applyPreferences();savePreferences();});
+  $('#btnScalePlus').addEventListener('click',()=>{state.scale=Math.min(1.5,Math.round((state.scale+.1)*10)/10);applyPreferences();savePreferences();});
+  $('#btnScaleMinus').addEventListener('click',()=>{state.scale=Math.max(.9,Math.round((state.scale-.1)*10)/10);applyPreferences();savePreferences();});
+  $('#btnFirst').addEventListener('click',()=>{pause();setStep(0);});
+  $('#btnLast').addEventListener('click',()=>{pause();setStep((state.result?.passos.length||1)-1);});
+  $('#btnPrev').addEventListener('click',()=>{pause();setStep(state.step-1);});
+  $('#btnNext').addEventListener('click',()=>{pause();setStep(state.step+1);});
+  $('#btnPlay').addEventListener('click',play);
+  $('#stepRange').addEventListener('input',e=>{pause();setStep(Number(e.target.value));});
+  $('#speed').addEventListener('change',e=>{const playing=state.playing;pause();state.speed=Number(e.target.value);savePreferences();if(playing)play();});
+  $('#btnPresentation').addEventListener('click',()=>{document.body.classList.toggle('presentation');$('#btnPresentation').textContent=document.body.classList.contains('presentation')?'Sair da apresentação':'Modo apresentação';});
+  $$('[data-dynamic-tab]').forEach(b=>b.addEventListener('click',()=>{state.dynamicTab=b.dataset.dynamicTab;renderDynamic();}));
+  $$('[data-static-tab]').forEach(b=>b.addEventListener('click',()=>{state.staticTab=b.dataset.staticTab;renderStatic();}));
+  $('#staticContent').addEventListener('click',event=>{
+    const t=event.target.closest('[data-token]');if(t&&state.result){const token=state.result.tokens[Number(t.dataset.token)];jumpToCode(token.linha,token.coluna,token.lexema.length);return;}
+    const e=event.target.closest('[data-error]');if(e){const list=errorsList();state.selectedError=Number(e.dataset.error);const item=list[state.selectedError];if(item)jumpToCode(item.linha,item.coluna,item.lexema?.length||item.encontrado?.length||1);return;}
+    if(event.target.closest('#nextError')){const list=errorsList();if(list.length){state.selectedError=(state.selectedError+1)%list.length;const e=list[state.selectedError];jumpToCode(e.linha,e.coluna,e.lexema?.length||1);}return;}
+    if(event.target.closest('#prevError')){const list=errorsList();if(list.length){state.selectedError=(state.selectedError-1+list.length)%list.length;const e=list[state.selectedError];jumpToCode(e.linha,e.coluna,e.lexema?.length||1);}return;}
+    const g=event.target.closest('[data-grammar]');if(g){state.grammarTab=g.dataset.grammar;renderStatic();return;}
+    const q=event.target.closest('[data-state]');if(q){state.inspectState=Number(q.dataset.state);state.followState=false;renderStatic();return;}
+    if(event.target.closest('#btnCurrentState')){state.followState=true;state.inspectState=state.result?.passos[state.step]?.detalhes.estado||0;renderStatic();}
+  });
+  $('#staticContent').addEventListener('change',event=>{if(event.target.id==='stateSelect'){state.inspectState=Number(event.target.value);state.followState=false;renderStatic();}});
+  $('#dynamicContent').addEventListener('click',event=>{
+    if(event.target.closest('#treeZoomOut')){state.zoom=Math.max(.5,state.zoom-.15);renderDynamic();return;}
+    if(event.target.closest('#treeZoomIn')){state.zoom=Math.min(2.25,state.zoom+.15);renderDynamic();return;}
+    if(event.target.closest('#treeZoomReset')){state.zoom=1;renderDynamic();return;}
+    if(event.target.closest('#treeExpand')){state.collapsed.clear();renderDynamic();return;}
+    if(event.target.closest('#treeExport')){const svg=$('#treeCanvas svg');if(svg)window.studio?.exportTree(svg.outerHTML).then(ok=>{if(ok)toast('Árvore SVG exportada.');}).catch(e=>toast(e.message));return;}
+    const node=event.target.closest('[data-node]');if(node){const id=Number(node.dataset.node);state.collapsed.has(id)?state.collapsed.delete(id):state.collapsed.add(id);renderDynamic();}
+  });
+  $('#dynamicContent').addEventListener('keydown',event=>{if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-node]')){event.preventDefault();event.target.dispatchEvent(new MouseEvent('click',{bubbles:true}));}});
+  input.addEventListener('input',()=>{invalidate();refreshEditor();});
+  input.addEventListener('scroll',scrollTogether);input.addEventListener('click',cursorInfo);input.addEventListener('keyup',cursorInfo);
+  input.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();input.setRangeText('  ',input.selectionStart,input.selectionEnd,'end');input.dispatchEvent(new Event('input'));}});
+  document.addEventListener('keydown',event=>{
+    if((event.altKey)&&['ArrowRight','ArrowLeft'].includes(event.key)&&state.mode==='dynamic'){event.preventDefault();pause();setStep(state.step+(event.key==='ArrowRight'?1:-1));return;}
+    if(!event.ctrlKey&&!event.metaKey)return;
+    const k=event.key.toLowerCase();
+    if(k==='enter'){event.preventDefault();runAnalysis();}
+    if(k==='s'){event.preventDefault();saveFile(event.shiftKey);}
+    if(k==='o'){event.preventDefault();openFile();}
+    if(k==='n'){event.preventDefault();newFile();}
+    if(k==='1'){event.preventDefault();setMode('code');}
+    if(k==='2'){event.preventDefault();setMode('dynamic');}
+    if(k==='3'){event.preventDefault();setMode('static');}
+  });
+  $('#btnUpdate').addEventListener('click',handleUpdate);
+  $('#btnReleases').addEventListener('click',()=>window.studio?.openReleases().catch(e=>toast(e.message)));
+}
+async function initialize(){
+  bindUI();setDirty(false);refreshEditor();refreshSummary();updateTimeline();renderDynamic();renderStatic();
+  if(!window.studio){status('Pré-visualização. Execute no Electron para usar os arquivos e o Parser.');return;}
+  try{
+    window.studio.onCloseRequest(()=>{void closeRequest();});
+    window.studio.onUpdateState(updatePanel);updatePanel(await window.studio.updateStatus());
+    state.grammar=await window.studio.grammar();
+    state.examples=await window.studio.samples();
+    $('#examples').innerHTML=state.examples.map(item=>`<button class="example-item" type="button" data-example="${escapeHTML(item.name)}">${escapeHTML(item.title)}</button>`).join('');
+    const settings=await window.studio.getSettings();state.font=settings.font;state.scale=settings.scale;state.speed=settings.speed;applyPreferences();
+    renderStatic();
+  }catch(error){toast('Não foi possível carregar as configurações: '+error.message);}
+}
+initialize();

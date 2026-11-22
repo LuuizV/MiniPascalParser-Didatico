@@ -1,14 +1,31 @@
-# Histórico de versões
+# Registro de versões — MiniPascal Studio
+
+## v5.2.0 — Refino de IHC e confiabilidade
+
+- Editor ampliado: Novo texto, Importar arquivo e Salvar dentro da aba Código; seleção recolhível de exemplos e remoção dos ícones redundantes do topo.
+- Análise dinâmica com linha do tempo, apenas a linha de código relevante e explicações em cartões de SHIFT/REDUCE/ACCEPT/ERRO.
+- Nova árvore SVG real construída das ações registradas, com conexões, zoom, recolhimento e exportação vetorial.
+- Tokens, Gramática e Erros agrupados na consulta de dados estáticos; exportação de análise em área própria.
+- Melhoria de leitura: fontes maiores, zoom global persistente, contraste, controles ampliados e modo apresentação.
+- Navegação entre erros/tokens e editor, correção de offsets de CRLF/CR/LF.
+- Proteção do trabalho não salvo ao fechar; fluxo de salvar/descartar/cancelar.
+- Execução do Parser em Worker Thread, sem bloquear o loop de janelas; validação de arquivos e preferências.
+- Novos testes para árvore, helpers, explicações e Worker Thread. Suite de referência do SLR(1) preservada.
+- Regras de acumular solicitações entre versões e Plano Mestre v5.2.0 documentados.
+
+**Limitações conhecidas:** Instalação real/atualização no Windows ainda deve ser validada em computador Windows; árvore visual limitada em nós simultâneos; teste formal de acessibilidade ainda pendente.
+
+---
 
 Este documento registra as mudanças funcionais e técnicas do MiniPascal Studio.
 
-## [5.1.2] — Correção de atualização e Plano Mestre
+## [5.1.2] — Publicação segura e resiliência do atualizador (2026-11-22)
 
-- Workflow cria a Release como rascunho e só publica depois de validar instalador, Portable, `latest.yml`, blockmap e SHA256 no GitHub.
-- Atualizador reconhece o erro `latest.yml` 404 como possível publicação incompleta; faz duas novas consultas automáticas, sem baixar nem instalar silenciosamente.
-- Mensagens de atualização simplificadas e novos testes de falha transitória e recuperação.
-- Adicionado [Plano Mestre](docs/PLANO-MESTRE.md) como regra permanente entre atualizações.
-- **Limitação:** atualização real no Windows deve ser validada após o build.
+- Correção do processo de publicação: release em rascunho até verificar `.exe`, `latest.yml`, `.blockmap` e SHA256.
+- Atualizador passa a tratar erro `latest.yml` 404 com até duas novas tentativas e mensagem amigável; nunca instala sem confirmação.
+- Novos testes de ausência temporária do manifesto e recuperação após publicação.
+- Instituído o [Plano Mestre](docs/PLANO-MESTRE.md), obrigatório antes de novas atualizações.
+- **Pendente de validação manual:** upgrade real entre dois instaladores no Windows.
 
 ## [5.1.1] — Interface simplificada e separação didática
 

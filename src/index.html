@@ -9,118 +9,85 @@
 </head>
 <body>
 <div class="app-shell">
-  <aside class="side" aria-label="Navegação principal">
-    <div class="brand"><div class="brand-icon">{·}</div><div class="brand-name">MiniPascal<span>Studio</span></div></div>
-    <nav class="navigation" aria-label="Áreas do aplicativo">
-      <button type="button" class="nav-item active" data-mode="code" aria-current="page"><span class="nav-icon">⌘</span><span>Código</span></button>
-      <button type="button" class="nav-item" data-mode="dynamic"><span class="nav-icon">▷</span><span>Análise dinâmica</span></button>
-      <button type="button" class="nav-item" data-mode="static"><span class="nav-icon">▦</span><span>Dados estáticos</span><span class="nav-count" id="navErrors" title="Quantidade de erros">0</span></button>
+  <aside class="sidebar" aria-label="Navegação">
+    <div class="brand"><div class="brand-icon" aria-hidden="true">{ }</div><strong>MiniPascal <span>Studio</span></strong></div>
+    <nav class="navigation" aria-label="Áreas">
+      <button type="button" class="nav-item active" data-mode="code" aria-current="page"><span class="nav-icon" aria-hidden="true">{ }</span> <span>Código</span></button>
+      <button type="button" class="nav-item" data-mode="dynamic"><span class="nav-icon" aria-hidden="true">▶</span> <span>Análise dinâmica</span></button>
+      <button type="button" class="nav-item" data-mode="static"><span class="nav-icon" aria-hidden="true">▤</span> <span>Dados estáticos</span><span class="nav-count" id="navErrors" hidden>0</span></button>
     </nav>
     <div class="side-bottom">
-      <section class="update-card" aria-label="Atualizações do aplicativo">
-        <div class="update-title"><span class="update-status-dot" id="updateDot"></span>Atualizações <span id="updateVersion" class="update-version">v5.1.2</span></div>
-        <p id="updateMessage" aria-live="polite">Verificando...</p>
-        <div id="updateProgressWrap" class="update-progress" hidden><div id="updateProgressBar"></div></div>
-        <div class="update-actions"><button id="btnUpdate" class="update-button" type="button">Verificar</button><button id="btnReleases" class="update-link" type="button" title="Abrir Releases oficiais no GitHub">↗</button></div>
+      <section class="update-card" aria-label="Atualizações">
+        <div class="update-heading"><strong>Atualizações</strong><span id="updateVersion">v5.2.0</span></div>
+        <p id="updateMessage" aria-live="polite">Verificando versão...</p>
+        <div class="update-progress" id="updateProgressWrap" hidden><div id="updateProgressBar"></div></div>
+        <div class="update-buttons"><button id="btnUpdate" class="update-action" type="button">Verificar</button><button id="btnReleases" class="icon-button" type="button" title="Abrir Releases oficiais" aria-label="Abrir Releases">↗</button></div>
       </section>
     </div>
   </aside>
+
   <div class="workbench">
     <header class="topbar">
-      <strong class="view-name" id="workspaceTitle">Código</strong>
-      <div class="top-actions">
-        <button id="btnNew" class="top-icon" title="Novo arquivo" aria-label="Novo arquivo">＋</button>
-        <button id="btnOpen" class="top-icon" title="Abrir arquivo (Ctrl+O)" aria-label="Abrir arquivo">▤</button>
-        <button id="btnSave" class="top-icon" title="Salvar (Ctrl+S)" aria-label="Salvar">▣</button>
-        <button id="btnExport" class="top-icon" title="Exportar análise" aria-label="Exportar análise">⇩</button>
-        <button id="btnUpdatesTop" class="top-icon" title="Verificar atualizações" aria-label="Verificar atualizações">↻</button>
-        <div class="vertical-line"></div>
-        <button id="btnRun" class="primary"><span class="play-icon">▶</span> Analisar código <small>Ctrl↵</small></button>
+      <strong id="viewTitle">Código</strong>
+      <div class="top-controls">
+        <div class="scale-controls" aria-label="Tamanho da interface"><button id="btnScaleMinus" type="button" title="Diminuir interface" aria-label="Diminuir tamanho da interface">A−</button><button id="btnScalePlus" type="button" title="Aumentar interface" aria-label="Aumentar tamanho da interface">A+</button></div>
+        <button class="primary-button" id="btnRun" type="button"><span aria-hidden="true">▶</span> Analisar código</button>
       </div>
     </header>
-    <main class="main-view">
-      <section class="studio-view" id="view-code" aria-label="Editor de código">
-        <div class="panel code-panel">
-          <div class="panel-title">
-            <div class="panel-title-left">
-              <div class="example-picker" id="examplePicker">
-                <button type="button" id="btnExamples" class="example-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="examplesMenu" title="Selecionar código">
-                  <span id="selectedExample">Código selecionado</span><span class="chevron">⌄</span>
-                </button>
-                <div class="example-menu" id="examplesMenu" hidden>
-                  <div class="example-menu-heading">Códigos disponíveis</div>
-                  <div id="examples" class="examples"></div>
-                </div>
-              </div>
-              <span class="dirty-flag" id="dirtyFlag" title="Alterações não salvas" hidden>●</span>
-              <span class="sr-only" id="filename">programa_exemplo.pas</span>
+
+    <main class="main-area">
+      <section id="view-code" class="studio-view" aria-label="Editor de código">
+        <div class="surface code-panel">
+          <div class="code-header">
+            <div class="example-picker" id="examplePicker">
+              <button class="example-trigger" id="btnExamples" type="button" aria-expanded="false" aria-controls="examplesMenu" aria-haspopup="true"><span id="selectedExample">Selecionar código</span><span aria-hidden="true">⌄</span></button>
+              <div id="examplesMenu" class="example-menu" hidden><div class="menu-label">Exemplos de código</div><div id="examples" class="example-list"></div></div>
             </div>
-            <div class="panel-title-right"><button class="flat-btn" id="btnFontMinus" title="Diminuir fonte">A−</button><button class="flat-btn" id="btnFontPlus" title="Aumentar fonte">A+</button></div>
+            <span id="dirtyFlag" class="dirty-indicator" title="Alterações não salvas" hidden>● Não salvo</span>
+            <div class="code-actions">
+              <button id="btnNew" type="button" class="tool-button">Novo texto</button>
+              <button id="btnImport" type="button" class="tool-button">Importar arquivo</button>
+              <button id="btnSave" type="button" class="tool-button prominent">Salvar</button>
+            </div>
           </div>
-          <div class="editor-wrap" id="editorWrap">
+          <div class="editor" id="editorWrap">
             <div id="lineNumbers" class="line-numbers" aria-hidden="true"></div>
-            <div class="editor-layer"><pre id="codeHighlight" class="code-highlight" aria-hidden="true"></pre><textarea id="codeInput" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Código MiniPascal"></textarea></div>
+            <div class="editor-layer"><pre id="codeHighlight" aria-hidden="true"></pre><textarea id="codeInput" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Código MiniPascal"></textarea></div>
           </div>
-          <div class="editor-footer">
-            <span id="editorCaret">Ln 1, Col 1</span>
-            <span id="editorLines">0 linhas</span>
-            <div class="editor-footer-actions"><button id="btnImport" class="editor-action" type="button">Importar TXT</button><button id="btnHelp" class="editor-action" type="button">Ajuda da linguagem</button></div>
-          </div>
+          <div class="editor-toolbar"><div class="editor-info"><span id="editorCaret">Linha 1, coluna 1</span><span id="editorLines">1 linha</span></div><div class="editor-tool-actions"><button id="btnFontMinus" title="Diminuir fonte do código" type="button">A−</button><button id="btnFontPlus" title="Aumentar fonte do código" type="button">A+</button><button id="btnHelp" type="button">Ajuda da linguagem</button></div></div>
         </div>
       </section>
-      <section class="studio-view" id="view-dynamic" aria-label="Análise dinâmica" hidden>
-        <div class="panel dynamic-panel">
-          <div class="panel-title compact-heading" id="summaryRow" hidden>
-            <div class="panel-title-left"><span class="inspection-indicator" id="stepBadge">Estado atual</span></div>
-            <div class="analysis-metrics" aria-label="Resumo da análise">
-              <span>Tokens <strong id="statTokens">—</strong></span>
-              <span>Estados <strong id="statStates">130</strong></span>
-              <span>Passos <strong id="statSteps">—</strong></span>
-              <span><strong id="statResult">Pendente</strong></span>
-              <span id="statErrorCount">Executar análise</span>
-            </div>
+
+      <section id="view-dynamic" class="studio-view" aria-label="Análise dinâmica" hidden>
+        <div class="surface dynamic-panel">
+          <div class="analysis-heading"><div class="analysis-summary"><strong id="statResult">Aguardando análise</strong><span id="statTokens">— tokens</span><span id="statSteps">— passos</span><span id="statErrors">— erros</span></div><button type="button" class="tool-button" id="btnPresentation">Modo apresentação</button></div>
+          <div class="timeline-block">
+            <div class="timeline-controls"><strong>Linha do tempo</strong><div class="transport-buttons"><button id="btnFirst" title="Primeiro passo" aria-label="Primeiro passo">⏮</button><button id="btnPrev" title="Passo anterior" aria-label="Passo anterior">◀</button><button id="btnPlay" class="play-button" title="Reproduzir" aria-label="Reproduzir">▶</button><button id="btnNext" title="Próximo passo" aria-label="Próximo passo">▶|</button><button id="btnLast" title="Último passo" aria-label="Último passo">⏭</button><select id="speed" aria-label="Velocidade de execução"><option value="2000">0,5×</option><option value="1200">1×</option><option value="700" selected>2×</option><option value="350">4×</option></select></div></div>
+            <div class="timeline-main"><div class="timeline-labels"><span id="timelinePos">Nenhuma etapa</span><span id="timelineState">—</span></div><input id="stepRange" type="range" min="0" max="0" value="0" disabled aria-label="Selecionar etapa"/><div class="timeline-ends"><span>Início</span><span>Fim</span></div></div>
           </div>
-          <section class="timeline" aria-label="Linha do tempo da análise">
-            <div class="panel-title timeline-title"><div class="panel-title-left">Linha do tempo</div>
-              <div class="timeline-tools">
-                <button id="btnFirst" class="transport" title="Primeiro passo" aria-label="Primeiro passo">⏮</button>
-                <button id="btnPrev" class="transport" title="Passo anterior" aria-label="Passo anterior">◀</button>
-                <button id="btnPlay" class="transport transport-main" title="Reproduzir ou pausar" aria-label="Reproduzir ou pausar">▶</button>
-                <button id="btnNext" class="transport" title="Próximo passo" aria-label="Próximo passo">▶|</button>
-                <button id="btnLast" class="transport" title="Último passo" aria-label="Último passo">⏭</button>
-                <select id="speed" title="Velocidade de reprodução" aria-label="Velocidade"><option value="1200">0.5×</option><option value="650" selected>1×</option><option value="300">2×</option><option value="100">5×</option></select>
-              </div>
-            </div>
-            <div class="timeline-body">
-              <div class="timeline-header"><span id="timelinePos">Nenhum passo selecionado</span><span id="timelineAction">Aguardando execução</span></div>
-              <input type="range" id="stepRange" min="0" max="0" value="0" disabled aria-label="Selecionar etapa de análise"/>
-              <div id="timelineTicks" class="timeline-ticks"></div>
-              <div class="timeline-bottom"><div id="actionExplain" class="explanation">Execute uma análise para começar.</div><button id="btnPresentation" class="subtle-button" title="Modo apresentação">⛶ Apresentação</button></div>
-            </div>
-          </section>
-          <div id="dynamicSlot" class="inspector-slot">
-            <div id="inspectorPane" class="inspector-pane">
-              <div class="inspector-tabs" id="inspectorTabs">
-                <button data-tab="simulator" data-group="dynamic" class="tab active">Simulador</button>
-                <button data-tab="tree" data-group="dynamic" class="tab">Árvore</button>
-                <button data-tab="tokens" data-group="static" class="tab">Tokens</button>
-                <button data-tab="grammar" data-group="static" class="tab">Gramática</button>
-                <button data-tab="errors" data-group="static" class="tab">Erros</button>
-              </div>
-              <div id="inspectorContent" class="inspector-content"><div class="empty"><h3>Pronto para analisar</h3></div></div>
-            </div>
+          <div class="context-strip">
+            <div class="source-focus"><div class="subheading"><span id="focusLabel">Linha analisada</span> <span id="focusLine">—</span></div><div id="focusedCode" class="focused-code">Execute uma análise para acompanhar o código.</div></div>
+            <div class="action-focus" id="actionBox"><div class="action-heading"><span id="actionBadge" class="action-badge">AGUARDANDO</span><strong id="actionTitle">Pronto para analisar</strong></div><p id="actionExplanation">O Parser mostrará aqui cada decisão da análise.</p><div id="actionTechnical" class="technical-note"></div></div>
           </div>
+          <div class="analysis-tabs" role="tablist" aria-label="Visualização dinâmica"><button type="button" data-dynamic-tab="simulator" class="active" role="tab" aria-selected="true">Simulador</button><button type="button" data-dynamic-tab="tree" role="tab" aria-selected="false">Árvore de derivação</button></div>
+          <div id="dynamicContent" class="content-area" role="tabpanel"></div>
         </div>
       </section>
-      <section class="studio-view" id="view-static" aria-label="Dados estáticos" hidden>
-        <div class="panel static-panel">
-          <div id="staticSlot" class="inspector-slot"></div>
+
+      <section id="view-static" class="studio-view" aria-label="Dados estáticos" hidden>
+        <div class="surface static-panel">
+          <div class="static-heading"><strong>Resultados e referências</strong><button id="btnExport" type="button" class="tool-button">Exportar análise</button></div>
+          <div class="analysis-tabs" role="tablist" aria-label="Informações da análise"><button data-static-tab="tokens" class="active" role="tab" aria-selected="true">Tokens</button><button data-static-tab="grammar" role="tab" aria-selected="false">Gramática</button><button data-static-tab="errors" role="tab" aria-selected="false">Erros <span id="errorTabCount"></span></button></div>
+          <div id="staticContent" class="content-area" role="tabpanel"></div>
         </div>
       </section>
     </main>
-    <div class="sr-only" id="statusText" role="status" aria-live="polite">Pronto</div>
+    <div id="statusText" class="sr-only" role="status" aria-live="polite">Pronto</div>
   </div>
 </div>
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="./ui-utils.js"></script>
+<script src="./tree-graph.js"></script>
 <script src="./renderer.js"></script>
-</body></html>
+</body>
+</html>

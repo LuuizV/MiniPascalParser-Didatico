@@ -20,6 +20,18 @@
 
 ---
 
+## Novidades da v5.2.0
+
+- **Editor maior e contextual:** Novo texto, Importar arquivo e Salvar na aba Código; seletor de exemplos recolhível.
+- **Análise dinâmica sincronizada:** linha do tempo, código da linha atual, cartão didático e simulador.
+- **Árvore gráfica:** conexões reais em SVG, zoom, expansão, recolhimento e exportação.
+- **Dados estáticos:** tokens, gramática e diagnósticos organizados em um mesmo ambiente.
+- **Mais legibilidade:** fontes ampliadas, escala global persistente, ações sem duplicidade e modo apresentação.
+- **Mais segurança para o trabalho:** proteção ao fechar com edições pendentes e análise isolada em Worker Thread.
+- **Regressão preservada:** 71 produções, 130 estados LR(0), 611 passos de referência.
+
+Consulte o [Plano de entrega v5.2.0](docs/PLANO-MESTRE-v5.2.0.md) e o [Guia de uso atualizado](docs/GUIA-DE-USO.md).
+
 ## Sobre o projeto
 
 O **MiniPascal Studio** é uma ferramenta acadêmica para estudar **compiladores** a partir do reconhecimento de programas em uma gramática didática de Mini_Pascal. O código é processado em duas fases integradas: um **Lexer** identifica os tokens; em seguida, o **Parser SLR(1)** consulta tabelas **ACTION/GOTO** para decidir entre *SHIFT*, *REDUCE*, *ACCEPT* e tratamento de erros.
@@ -93,7 +105,7 @@ A implementação atual possui **71 produções**, **130 estados LR(0)** e mant�
 
 ## Plano Mestre entre atualizações
 
-Cada nova versão segue o [**Plano Mestre de Atualizações**](docs/PLANO-MESTRE.md): diagnóstico dos bloqueadores, plano da versão, correção prioritária, regressões, compilação e publicação validada. As Releases só ficam visíveis quando os arquivos de atualização estiverem completos.
+Antes de cada versão, aplicamos o [Plano Mestre de Atualizações](docs/PLANO-MESTRE.md): diagnóstico, correções prioritárias, testes, Release validada e registro das limitações. Releases só ficam visíveis após o manifesto e instaladores estarem presentes.
 
 ## Atualizações pelas Releases
 
@@ -103,7 +115,7 @@ A partir da **v5.1.0**, o instalador NSIS pode consultar a **Release estável** 
 - Havendo versão mais recente, é exibido um botão para **baixar** e, depois, **instalar e reiniciar**.
 - O progresso fica visível. Antes de reiniciar, o editor verifica alterações não salvas.
 - A edição **Portable** abre a Release oficial, pois não oferece atualização no local.
-- Novas versões são publicadas com um novo número `vX.Y.Z`, instalador NSIS e manifesto `latest.yml`.
+- Novas versões usam um número `vX.Y.Z`; a Release só sai de rascunho depois que instalador, portátil, `latest.yml` e hashes forem validados.
 
 **Importante:** quem possui a v5.0.0 precisa instalar a v5.1.0 manualmente uma vez. Para que o auto-update funcione em produção, a Release precisa conter também `latest.yml` e o `.exe` NSIS. Detalhes em [Atualizações e publicação](docs/ATUALIZACOES.md).
 

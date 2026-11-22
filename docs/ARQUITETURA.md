@@ -1,34 +1,53 @@
-# Arquitetura
+# Arquitetura do MiniPascal Studio
 
-[← Página principal](../README.md)
+A interface é um cliente Electron isolado da lógica de análise. A comunicação segue o modelo IPC controlado do Electron.
 
 ## Componentes
 
-| Arquivo | Responsabilidade |
-|---|---|
-| `src/core.cjs` | Lexer, FIRST/FOLLOW, LR(0), tabela SLR(1), Parser e erros. |
-| `src/grammar.json` | Produções numeradas da gramática Mini_Pascal. |
-| `src/main.cjs` | Janela Electron, IPC e acesso controlado a arquivos locais. |
-| `src/preload.cjs` | Interface mínima entre renderer e processo principal. |
-| `src/renderer.js` | Editor, simulação, pilha, árvores e navegação. |
-| `src/index.html`, `src/style.css` | Interface responsiva. |
-| `src/update-manager.cjs` | Máquina de estados de verificação, download e instalação. |
-| `tests/` | Programas, regressão léxica/sintática e testes do updater. |
+| Componente | Responsabilidade |
+| --- | --- |
+| `src/core.cjs` | Lexer, FIRST/FOLLOW, estados LR(0), tabela SLR(1), Parser, diagnóstico e histórico. |
+| `src/grammar.json` | Gramática com 71 produções e numeração estável. |
+| `src/analysis-worker.cjs` | Executa `analisar()` em Worker Thread, fora da thread de janelas. |
+| `src/main.cjs` | Janela, arquivos, preferências, confirmação de fechamento, IPC e Workers com timeout. |
+| `src/preload.cjs` | Expõe uma API mínima ao renderer isolado. |
+| `src/ui-utils.js` | Offsets CRLF/LF/CR, explicações de ações, escape de HTML. |
+| `src/tree-graph.js` | Constrói árvore de derivação a partir do histórico real e calcula layout SVG. |
+| `src/renderer.js` | Orquestra editor, navegação, simulação, visualizações e atualizações. |
+| `src/index.html`, `src/style.css` | Semântica visual, estrutura e escala de UI. |
+| `src/update-manager.cjs` | Controle das verificações, download e instalação autorizada. |
+| `tests/` | Exemplos, regressões do Lexer/SLR(1), testes do updater, helpers e Worker. |
 
-## Análise
+## Fluxo de dados
 
-Código → Lexer → tokens → Parser SLR(1) → histórico de ações → simulador, árvore e diagnósticos.
+```text
+Código-fonte
+  └─ IPC analyze → Worker Thread
+                   └─ Lexer → Tokens → Parser SLR(1)
+                                     └─ Histórico estruturado por etapa
+                                        ├─ Linha do tempo + linha atual
+                                        ├─ Cartão de operação
+                                        ├─ Pilha e ACTION/GOTO
+                                        └─ Árvore SVG concreta
 
-A gramática implementada possui **71 produções** e **130 estados LR(0)**. Os seis arquivos-base preservam **611 passos SLR(1)** comparados com a versão Java, conforme a suíte de testes.
+Resultados completos (estáticos para a execução)
+  ├─ Tokens
+  ├─ Gramática / FIRST / FOLLOW / LR(0) / ACTION / GOTO
+  └─ Erros
+```
 
-## Segurança
+Os registros da pilha armazenam o estado anterior à ação; a árvore reconstrói as ações aplicadas até a etapa. A visualização não altera os algoritmos de reconhecimento.
 
-- `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true` e `webSecurity: true`.
-- A interface usa arquivos locais com política CSP; operações nativas são expostas por IPC limitado.
-- O updater conhece apenas a Release oficial `LuuizV/MiniPascalParser-Didatico`, sem tokens pessoais no executável.
-- Não há instalação silenciosa: o usuário decide o download e o reinício.
-- Os hashes e metadados ajudam a verificar integridade, mas **não substituem assinatura digital**.
+## Segurança e confiabilidade
 
-## Manutenção
+- `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`, `webSecurity: true` e política CSP sem conexões externas no renderer.
+- IPC nativo com validação de argumento; caminho de arquivo só é reutilizado após abertura ou escolha em diálogo nativo.
+- Fechamento com alterações não salvas exige escolher **Salvar**, **Não salvar** ou **Cancelar**.
+- Análise em Worker Thread, com timeout e substituição de análise antiga em caso de nova solicitação.
+- Preferências em arquivo local do diretório `userData` (fonte, escala, velocidade), com limites de validação.
+- A atualização automática usa somente as Releases oficiais e depende de confirmação; Portable é manual.
+- SVG renderizado com rótulos escapados e exportado por diálogo nativo.
 
-Toda mudança no núcleo deve passar por `npm run check` e `npm test`. Alterações da gramática exigem registrar divergências da especificação Sigma, atualizar o histórico e revisar os testes.
+## Compatibilidade e regressão
+
+Enquanto a gramática não mudar, preservar **71 produções, 130 estados LR(0), 611 passos SLR(1)** no conjunto de referência. O projeto inclui testes automatizados com `npm test` e verificação sintática com `npm run check`. Essas verificações não substituem um teste real de instalação/atualização Windows.
