@@ -1,14 +1,23 @@
-# CHANGELOG
+# Histórico de versões
 
-## v5.0.0 — Electron
+## v5.1.0 — Atualização pelas Releases e documentação acadêmica
 
-- Migração completa da interface Java Swing para Electron com identidade visual moderna.
-- Tradução do Lexer, geração SLR(1) e Parser para JavaScript puro, sem exigir Java ou Python na execução.
-- Preservação da gramática, dos 130 estados LR(0) e dos 611 passos de regressão.
-- Editor com sintaxe, numeração de linhas, salvamento e navegação para tokens/erros.
-- Abas para Lexer, simulador SLR, gramática, árvore concreta e diagnósticos.
-- Execução automática, pausa, retrocesso, velocidade, timeline e modo apresentação.
-- Ações nativas protegidas por preload isolado e IPC restrito.
-- Automação de testes Node e workflow para gerar instalador/portable no Windows.
+- Integração com `electron-updater` para o instalador Windows NSIS.
+- Consulta à Release oficial na inicialização e por ação do usuário.
+- Download com progresso e instalação após confirmação e salvamento de alterações.
+- Acesso à Release oficial no modo Portable.
+- Pipeline Windows com `latest.yml`, instalador, portátil e hashes SHA256.
+- Documentação técnica e acadêmica com identificação dos três estudantes e do professor.
+- Testes unitários do gerenciador de atualização.
 
-- Pipeline de build Windows x64: verificações, testes, `.exe` NSIS e portátil, checksums e publicação automática da Release `v5.0.0` no GitHub.
+**Pendências:** a v5.0.0 precisa de instalação manual para receber o recurso; instalar/atualizar em Windows real precisa ser testado. Executáveis sem assinatura digital.
+
+## v5.0.0 — Migração para Electron
+
+- Reimplementação do Lexer e Parser em JavaScript, mantendo a gramática atual.
+- Editor, simulador SLR(1), árvore de derivação, estados e diagnósticos.
+- Regressão dos 130 estados e 611 ações sintáticas da versão Java.
+
+## v4.0.0 — Versão Java (legado)
+
+- Continuidade entre o Lexer e o Parser, documentação dos métodos e visualização didática em Swing.

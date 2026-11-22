@@ -1,63 +1,131 @@
-# MiniPascal Studio — Electron (v5.0.0)
+<div align="center">
 
-Ambiente visual de análise léxica e sintática SLR(1), refeito em **Electron + HTML/CSS + JavaScript puro**. Não usa Swing, Java ou Python para executar. A gramática da versão Java anterior permanece a mesma.
+# ◈ MiniPascal Studio
 
-## Instalação no Windows
+### Seu código, passo a passo.
 
-Requisitos para **desenvolvimento**: Node.js LTS e npm. No terminal da pasta do projeto:
+**Bancada didática de compiladores · Lexer · Parser SLR(1) · Electron**
 
-```powershell
+[![Versão](https://img.shields.io/badge/versão-5.1.0-8B78F9?style=for-the-badge)](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest)
+[![Windows](https://img.shields.io/badge/Windows-x64-1678D0?style=for-the-badge&logo=windows)](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest)
+[![Electron](https://img.shields.io/badge/Electron-Desktop-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![JavaScript](https://img.shields.io/badge/JavaScript-Node.js-357A54?style=for-the-badge&logo=nodedotjs)](https://nodejs.org/)
+
+[![Testes](https://github.com/LuuizV/MiniPascalParser-Didatico/actions/workflows/ci.yml/badge.svg)](https://github.com/LuuizV/MiniPascalParser-Didatico/actions/workflows/ci.yml)
+[![Release Windows](https://github.com/LuuizV/MiniPascalParser-Didatico/actions/workflows/build-windows.yml/badge.svg)](https://github.com/LuuizV/MiniPascalParser-Didatico/actions/workflows/build-windows.yml)
+
+[**Baixar para Windows**](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest) · [**Instalação**](docs/INSTALACAO.md) · [**Guia de uso**](docs/GUIA-DE-USO.md) · [**Arquitetura**](docs/ARQUITETURA.md)
+
+</div>
+
+---
+
+## Apresentação
+
+O **MiniPascal Studio** é uma ferramenta educacional para estudar a construção de compiladores. Ele une **análise léxica** e **análise sintática SLR(1)** em uma interface desktop interativa, mostrando como um programa é transformado em tokens e como esses tokens percorrem a tabela **ACTION/GOTO** até a aceitação ou a identificação de erros.
+
+A interface foi reconstruída em **Electron, HTML, CSS e JavaScript**, mantendo a gramática e o comportamento verificado da versão Java do Lexer e Parser. O estudante pode pausar a análise, avançar, retroceder e compreender cada operação.
+
+> **Nota de escopo:** o Parser preserva a gramática **Mini_Pascal fornecida**, que possui diferenças em relação à gramática **Sigma** apresentada no enunciado acadêmico. O programa não deve ser descrito como implementação integral de Sigma.
+
+## Funcionalidades
+
+| Ferramenta | O que demonstra |
+|---|---|
+| **Editor** | Realce de sintaxe, linhas, abertura e salvamento de arquivos. |
+| **Lexer** | Tokens, lexemas, tipos, linha e coluna. |
+| **Simulador SLR(1)** | SHIFT, REDUCE, ACCEPT, erro, pilha e entrada restante. |
+| **Gramática** | Produções, conjuntos FIRST/FOLLOW e tabelas ACTION/GOTO. |
+| **Estados LR(0)** | Itens e transições exploráveis. |
+| **Árvore de derivação** | Construção visual a partir das reduções registradas. |
+| **Diagnósticos** | Erros léxicos e sintáticos com navegação até o código. |
+| **Apresentação** | Modo ampliado para explicações em sala de aula. |
+| **Atualizações** | Verificação e instalação sob confirmação pelas Releases oficiais. |
+
+## Início rápido
+
+**Para usar no Windows x64:** abra a [Release mais recente](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest) e escolha:
+
+- **Setup (.exe):** instala o aplicativo e permite futuras atualizações automáticas, após confirmação.
+- **Portable (.exe):** executa sem instalação; para atualizar, baixe uma nova cópia manualmente.
+
+Não é necessário instalar Java, Python ou Node.js para executar o aplicativo distribuído.
+
+**Para desenvolver:**
+
+```bash
 npm install
+npm run check
+npm test
 npm start
 ```
 
-Para criar o executável Windows (sem exigir Node no computador de destino):
+Para compilar no Windows: `npm run dist:win`.
 
-```powershell
-npm run dist:win
+## Como o analisador funciona
+
+```mermaid
+flowchart LR
+ A["Código Mini_Pascal"] --> B["Lexer"]
+ B --> C["Tokens e posições"]
+ C --> D["Parser SLR(1)"]
+ E["Gramática + FIRST/FOLLOW"] --> F["Estados LR(0) + ACTION/GOTO"]
+ F --> D
+ D --> G["Histórico SHIFT / REDUCE / ACCEPT"]
+ G --> H["Simulador · Pilha · Árvore"]
+ D --> I["Erros e resultado"]
 ```
 
-Os arquivos serão gerados em `dist/` (portable e/ou instalador). O GitHub Actions também executa os testes, gera o **instalador e a versão portátil Windows x64** e, após uma compilação bem-sucedida, anexa os `.exe` à [Release v5.0.0](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/tag/v5.0.0). Os executáveis ainda não possuem assinatura de código, portanto o Windows pode exibir um aviso do SmartScreen.
+A gramática atual reúne **71 produções** e **130 estados LR(0)**. A regressão de seis testes sintáticos reproduz **611 passos SLR(1)** da implementação Java de referência. Os testes verificam comportamento em amostras definidas; não constituem prova de correção para todos os programas possíveis.
 
-## Como usar
+## Atualização pelas Releases — a partir da v5.1.0
 
-1. Escreva um programa MiniPascal no editor, ou escolha um dos seis exemplos na barra lateral.
-2. Clique em **Analisar código** (`Ctrl+Enter`).
-3. Use **Simulador** para percorrer a pilha, o terminal, a entrada e as operações SHIFT/REDUCE/ACCEPT.
-4. Abra **Tokens** para inspecionar os lexemas e suas posições, **Gramática** para navegar por produções, FIRST/FOLLOW, estados LR(0) e ACTION/GOTO, **Árvore** para reconstruir as reduções, ou **Erros** para examinar os diagnósticos.
-5. Navegue pela linha do tempo com os controles ou reproduza automaticamente as etapas. Use **Apresentação** para ampliar a bancada.
-6. `Ctrl+O` abre arquivo; `Ctrl+S` salva o código; a ação **Exportar análise** salva o relatório textual.
+O aplicativo instalado pelo **NSIS** verifica a Release estável do GitHub ao iniciar e permite:
 
-## Arquitetura
+1. **Verificar** se há nova versão.
+2. **Baixar** com indicador de progresso.
+3. **Instalar e reiniciar** somente após confirmação e salvamento de alterações pendentes.
 
-```
-src/
-  core.cjs         Lexer + gerador FIRST/FOLLOW/LR(0)/SLR(1) + Parser (Node)
-  grammar.json     71 produções extraídas fielmente da implementação Java
-  main.cjs         Janela Electron, diálogos nativos e IPC validado
-  preload.cjs      API de contexto isolado
-  index.html       Interface da bancada
-  style.css        Design responsivo de tema escuro
-  renderer.js      Editor, tokens, pilha, árvore e simulação
-```
+A edição Portable oferece acesso à Release, mas exige substituição manual. Quem instalou a **v5.0.0** precisa instalar **v5.1.0 manualmente uma vez**, pois a versão anterior ainda não possuía atualizador. Leia o [manual de atualizações](docs/ATUALIZACOES.md).
 
-O núcleo usa somente JavaScript com dados locais. A interface carrega apenas arquivos do próprio aplicativo. A opção `nodeIntegration` está desabilitada, `contextIsolation` e `sandbox` estão habilitados; ações nativas passam por IPC restrito. Nenhuma fonte de rede nem CDN é necessária em execução.
+## Equipe e orientação acadêmica
 
-## Testes
+**Universidade Estadual do Sudoeste da Bahia (UESB)** · Departamento de Ciências Exatas (DCET) · **Ciência da Computação** · Disciplina: **Compiladores**
 
-```powershell
-npm run check
-npm test
-```
+**Discentes participantes:**
+- **Luiz Vicente Gomes Jirardi**
+- **Raimundo José Santiago Netto**
+- **Jader Levi Nascimento Abreu Azevedo**
 
-O comparador de regressão foi elaborado a partir do teste de mesa **do Parser Java v4.0.0**: 130 estados, 71 produções, 611 passos nos seis arquivos do Parser, com o mesmo histórico de pilha, entrada e ação e os mesmos resultados. A comparação dos textos normaliza caracteres acentuados para `?`, pois o terminal Java usado para gerar o baseline não preservou acentuação; os textos são mantidos corretamente em UTF-8 na versão Electron. Cinco exemplos léxicos também são exercitados. Incluímos um teste específico para fotografias de pilha antes da recuperação de erros.
+**Professor:** **José Carlos Martins Oliveira**
+
+Consulte o [contexto acadêmico](docs/CONTEXTO-ACADEMICO.md) para a descrição do trabalho, seus limites e os critérios de avaliação.
+
+## Documentação
+
+| Documento | Conteúdo |
+|---|---|
+| [Instalação](docs/INSTALACAO.md) | Download, configuração, verificações e solução de problemas. |
+| [Guia de uso](docs/GUIA-DE-USO.md) | Operações do simulador e atalhos. |
+| [Arquitetura](docs/ARQUITETURA.md) | Componentes, fluxo SLR(1), IPC e segurança. |
+| [Atualizações](docs/ATUALIZACOES.md) | Releases, latest.yml, compilação Windows e versionamento. |
+| [Contexto acadêmico](docs/CONTEXTO-ACADEMICO.md) | Participantes, disciplina, requisitos e limites. |
+| [CHANGELOG](CHANGELOG.md) | Histórico de versões. |
 
 ## Limitações
 
-- A gramática utilizada é a **Mini_Pascal do Parser fornecido**, e **não** a gramática Sigma integral descrita no PDF do trabalho.
-- Não interpreta nem executa os programas; realiza análise léxica e sintática.
-- A árvore exibida é de **derivação concreta**. Após erro com recuperação, a árvore permanece parcial.
-- O diagrama dos estados é local e navegável; não representa os 130 estados simultaneamente.
-- Os testes Node.js validam o núcleo e o histórico de análise. O workflow Windows valida a compilação dos executáveis; a execução interativa do aplicativo em um computador Windows ainda requer verificação manual.
+- O aplicativo realiza **reconhecimento léxico e sintático**, não execução ou análise semântica.
+- A linguagem suportada é a **Mini_Pascal implementada**, não Sigma integral.
+- A árvore pode permanecer **parcial** quando há erros com recuperação.
+- O instalador ainda **não possui assinatura digital**; o SmartScreen poderá apresentar aviso.
+- O pipeline testa o código e gera o executável. O fluxo completo de atualização em um computador Windows exige validação manual entre duas Releases.
 
-Consulte [AGENTS.md](AGENTS.md) para as regras de desenvolvimento. A base Java original e o histórico anterior podem ser recuperados do arquivo `.bundle` fornecido na entrega anterior; esta versão constitui um novo frontend e núcleo JavaScript.
+---
+
+<div align="center">
+
+**MiniPascal Studio** · Tornando visível o processo de análise de um compilador.
+
+[Repositório](https://github.com/LuuizV/MiniPascalParser-Didatico) · [Releases](https://github.com/LuuizV/MiniPascalParser-Didatico/releases) · [Actions](https://github.com/LuuizV/MiniPascalParser-Didatico/actions)
+
+</div>
