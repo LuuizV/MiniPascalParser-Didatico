@@ -35,6 +35,7 @@ jobs:
           $v = node -p "require('./package.json').version"
           $tag = "v$v"
           "tag=$tag" >> $env:GITHUB_OUTPUT
+          $PSNativeCommandUseErrorActionPreference = $false
           gh release view $tag --repo "$env:GITHUB_REPOSITORY" *> $null
           if ($LASTEXITCODE -eq 0) {
             "publish=false" >> $env:GITHUB_OUTPUT
