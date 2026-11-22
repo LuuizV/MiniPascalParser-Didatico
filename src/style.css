@@ -4,3 +4,13 @@
 @media(max-width:1100px){.side{width:75px;align-items:center;padding:20px 8px}.side .brand>div:last-child,.side-heading,.navigation .nav-item span:nth-child(2),.navigation .nav-item small,.nav-count,.examples,.side-bottom{display:none}.brand{padding:0 0 28px}.nav-item{width:51px;padding:0;justify-content:center}.nav-icon{font-size:24px}.navigation{gap:8px}.stat-num{font-size:17px}.stat-icon{height:31px;width:31px}.welcome-badge{display:none}}
 @media(max-width:840px){.work-grid{grid-template-columns:1fr;height:auto}.code-panel,.inspector-panel{height:390px}.stats{grid-template-columns:repeat(2,1fr)}.welcome h1{font-size:25px}.tiny-sub{display:none}.topbar .breadcrumb .small-muted{display:none}.primary small{display:none}}
 .code-highlight .hit{background:#53437d70;border-bottom:1px solid #b7a2ff}.line-numbers .line-active{color:#b9a9ff;background:#282a49;border-radius:4px}.line-numbers .line-error{color:#ff9b9b}.ghost-note{color:#8d9cb4;font-size:11px;line-height:1.5}.error-count{color:#ffb6ad}.inspector-content::-webkit-scrollbar,.examples::-webkit-scrollbar{width:6px}.inspector-content::-webkit-scrollbar-thumb,.examples::-webkit-scrollbar-thumb{background:#42506b;border-radius:10px}.tip-card{padding:11px 13px;background:#202b42;border-radius:8px;border:1px solid #3a4d6b;color:#abbce0;margin-top:12px;font-size:11px;line-height:1.7}.tip-card strong{color:#decaff}
+
+/* Acesso ao atualizador instalado via Releases oficiais. */
+.update-card{margin-bottom:12px;padding:12px;border:1px solid #374768;border-radius:11px;background:linear-gradient(145deg,#202b46,#131d30);font-size:11px}
+.update-head{display:flex;gap:7px;align-items:center;letter-spacing:.6px;font-weight:700;color:#d5d9eb}.update-head small{margin-left:auto;color:#9caac4}
+.update-card p{color:#aebad2;line-height:1.55;min-height:28px}
+.update-actions{display:flex;gap:5px}.update-actions button{background:#342d5c;border:1px solid #6958aa;border-radius:7px;color:#ded2ff;padding:7px;font-size:11px}
+.update-actions button:first-child{flex:1}.update-actions button:disabled{opacity:.5}
+.update-progress{height:5px;border-radius:6px;background:#35425a;overflow:hidden;margin-bottom:10px}
+.update-progress>div{width:0;height:100%;background:#a999ff;transition:width .2s}.side-bottom{overflow-y:auto;min-height:0}
+@media(max-height:800px){.side-bottom .onboarding{display:none}}

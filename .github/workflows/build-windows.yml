@@ -1,73 +1,80 @@
-name: Compilar e publicar Windows (.exe)
-
+name: Windows - instalador, portable e Release
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: write
-
+concurrency:
+  group: mini-pascal-release-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   windows:
-    name: Windows x64 — teste, build e Release
+    name: Compilar Windows x64 e publicar a versão
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
     steps:
-      - name: Baixar código
+      - name: Obter o código
         uses: actions/checkout@v4
-
-      - name: Instalar Node.js
+      - name: Preparar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-
       - name: Instalar dependências
         run: npm install --no-audit --no-fund
-
-      - name: Verificar código e regressões
+      - name: Validar regressões e sintaxe
         run: |
           npm run check
           npm test
-
-      - name: Gerar instalador e executável portátil (x64)
-        run: npx electron-builder --win nsis portable --x64 --publish never
+      - name: Verificar se a Release já existe
+        id: version
+        shell: pwsh
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $v = node -p "require('./package.json').version"
+          $tag = "v$v"
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          gh release view $tag --repo "$env:GITHUB_REPOSITORY" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            "publish=false" >> $env:GITHUB_OUTPUT
+            Write-Host "Release existente: aumentar version em package.json antes de publicar novamente."
+          } else {
+            "publish=true" >> $env:GITHUB_OUTPUT
+          }
+      - name: Compilar NSIS + portable e publicar latest.yml
+        if: steps.version.outputs.publish == 'true'
+        run: npx electron-builder --win nsis portable --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-
-      - name: Gerar SHA256 dos executáveis
+      - name: Validar manifesto e calcular SHA256
+        if: steps.version.outputs.publish == 'true'
         shell: pwsh
         run: |
-          $files = Get-ChildItem 'dist/*.exe'
-          if ($files.Count -lt 2) { throw 'Esperados instalador e executável portátil (.exe).' }
-          $files | ForEach-Object { "$( (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower() )  $($_.Name)" } | Set-Content 'dist/SHA256SUMS.txt' -Encoding utf8
-
-      - name: Guardar artefatos da compilação
+          if (!(Test-Path 'dist/latest.yml')) { throw 'latest.yml não foi gerado.' }
+          if (!(Get-ChildItem dist/*Setup*.exe) -or !(Get-ChildItem dist/*Portable*.exe)) { throw 'Executáveis esperados ausentes.' }
+          Get-ChildItem dist/*.exe | ForEach-Object {
+            "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
+          } | Set-Content 'dist/SHA256SUMS.txt' -Encoding utf8
+      - name: Publicar hashes e finalizar Release
+        if: steps.version.outputs.publish == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh release upload "$env:RELEASE_TAG" dist/SHA256SUMS.txt --repo "$env:GITHUB_REPOSITORY" --clobber
+          gh release edit "$env:RELEASE_TAG" --repo "$env:GITHUB_REPOSITORY" --draft=false --latest --title "MiniPascal Studio $env:RELEASE_TAG - Windows" --notes "Instalador NSIS atualizável por Releases. Portable com atualização manual. Sem assinatura digital."
+      - name: Guardar artefatos
+        if: steps.version.outputs.publish == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: MiniPascal-Studio-v5.0.0-Windows-x64
+          name: MiniPascal-Studio-${{ steps.version.outputs.tag }}-Windows-x64
           path: |
             dist/*.exe
+            dist/latest.yml
+            dist/*.blockmap
             dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
-
-      - name: Publicar executáveis na Release v5.0.0
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: v5.0.0
-          name: MiniPascal Studio v5.0.0 — Windows
-          target_commitish: ${{ github.sha }}
-          make_latest: true
-          generate_release_notes: false
-          body: |
-            MiniPascal Studio v5.0.0 — interface Electron, analisador léxico e sintático SLR(1).
-
-            Inclui dois arquivos para Windows x64: instalador NSIS e versão portátil.
-            O aplicativo não precisa de Python, Java ou Node.js para ser executado.
-            Execute `npm test` no código-fonte para conferir as regressões.
-            **Aviso:** os executáveis ainda não possuem assinatura de código; o Windows SmartScreen poderá exibir um aviso.
-          files: |
-            dist/*.exe
-            dist/SHA256SUMS.txt
-          fail_on_unmatched_files: true

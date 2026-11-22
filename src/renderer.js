@@ -13,6 +13,7 @@ begin
 end.`;
 const state={result:null,grammar:null,step:0,tab:'simulator',fileName:'programa_exemplo.pas',filePath:null,dirty:false,font:13,playing:false,timer:null,selectedToken:-1,grammarTab:'states',inspectState:0,examples:[],mutated:false};
 const input=$('#codeInput');input.value=sample;
+let currentUpdate=null;
 function notify(message){const el=$('#toast');el.textContent=message;el.classList.add('visible');clearTimeout(notify.timer);notify.timer=setTimeout(()=>el.classList.remove('visible'),3000);}
 function status(message){$('#statusText').textContent=message;}
 function setDirty(flag){state.dirty=flag;$('#dirtyFlag').hidden=!flag;$('#fileStatus').textContent=flag?'Alterações não salvas':'Sem alterações';}
@@ -51,7 +52,7 @@ function updateStats(){const r=state.result;
   const n=(r?.errosLexicos.length||0)+(r?.errosSintaticos.length||0);
   $('#statErrorCount').textContent=r?`${n} erro${n===1?'':'s'}`:'Executar análise';$('#navErrors').textContent=n;
 }
-function reportText(r){const a=[`MiniPascal Studio v5.0 — ${state.fileName}`,`ESTADOS=${r.estados}`,`ACEITO=${r.aceito}`];
+function reportText(r){const a=[`MiniPascal Studio v5.1 — ${state.fileName}`,`ESTADOS=${r.estados}`,`ACEITO=${r.aceito}`];
   for(const t of r.tokens)a.push(`TOK=<${t.lexema}, ${t.descricao}> [linha ${t.linha}, coluna ${t.coluna}]`);
   for(const e of r.errosLexicos)a.push(`LEX=Linha ${e.linha}, coluna ${e.coluna}: ${e.mensagem}${e.lexema?' ['+e.lexema+']':''}`);
   for(const e of r.errosSintaticos)a.push(`SYN=Linha ${e.linha}, coluna ${e.coluna}: ${e.mensagem}`);
@@ -165,7 +166,37 @@ $('#examples').addEventListener('click',async e=>{
 document.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey))return;
   const k=e.key.toLowerCase();if(k==='enter'){e.preventDefault();runAnalysis();}else if(k==='s'){e.preventDefault();saveFile(e.shiftKey);}else if(k==='o'){e.preventDefault();$('#btnOpen').click();}else if(k==='1'){e.preventDefault();setView('simulator');}else if(k==='2'){e.preventDefault();setView('tokens');}else if(k==='3'){e.preventDefault();setView('simulator');}else if(k==='4'){e.preventDefault();setView('grammar');}
 });
+/** Comunicação de atualização: consulta, download e instalação confirmada. */
+function showUpdate(data){
+  if(!data)return;
+  currentUpdate=data;$('#updateVersion').textContent='v'+String(data.version||'5.1.0');
+  $('#updateMessage').textContent=String(data.message||'');
+  const progress=Number(data.progress);
+  $('#updateProgressWrap').hidden=!(data.status==='downloading'&&Number.isFinite(progress));
+  $('#updateProgressBar').style.width=Math.min(100,Math.max(0,progress||0))+'%';
+  const labels={idle:'Verificar atualizações',checking:'Verificando...',available:'Baixar atualização',downloading:'Baixando...',downloaded:'Instalar e reiniciar',installing:'Instalando...',current:'Verificar novamente',error:'Tentar novamente',manual:'Abrir Releases'};
+  $('#btnUpdate').textContent=labels[data.status]||'Verificar atualizações';
+  $('#btnUpdate').disabled=['checking','downloading','installing'].includes(data.status);
+  $('#btnUpdatesTop').title=String(data.message||'Atualizações');
+  $('#btnUpdatesTop').textContent=['available','downloaded'].includes(data.status)?'⬆':'↻';
+}
+async function updateAction(){
+  if(!window.studio)return;
+  try{
+    if(!currentUpdate?.canAutoUpdate){await window.studio.openReleases();return;}
+    if(currentUpdate.status==='available'){await window.studio.downloadUpdate();return;}
+    if(currentUpdate.status==='downloaded'){
+      if(!window.confirm((state.dirty?'Há código não salvo.\\n\\n':'')+'Instalar a atualização e reiniciar o MiniPascal Studio?'))return;
+      if(state.dirty){await saveFile();if(state.dirty){notify('Salve o código antes de instalar.');return;}}
+      await window.studio.installUpdate();return;
+    }
+    await window.studio.checkForUpdates();
+  }catch(error){notify('Atualização: '+String(error?.message||error));}
+}
+$('#btnUpdate').addEventListener('click',updateAction);
+$('#btnUpdatesTop').addEventListener('click',updateAction);
+$('#btnReleases').addEventListener('click',async()=>{try{await window.studio?.openReleases();}catch(e){notify(e.message);}});
 async function init(){try{if(!window.studio){status('Pré-visualização visual — execute com npm start');return;}
-  state.grammar=await window.studio.grammar();state.examples=await window.studio.samples();$('#examples').innerHTML=state.examples.map((f,i)=>`<button class="example-item" data-example="${escapeHTML(f.name)}"><span class="example-dot"></span><span>${escapeHTML(f.title)}</span></button>`).join('');updateStats();renderInspector();
+  window.studio.onUpdateState(showUpdate);showUpdate(await window.studio.updateStatus());state.grammar=await window.studio.grammar();state.examples=await window.studio.samples();$('#examples').innerHTML=state.examples.map((f,i)=>`<button class="example-item" data-example="${escapeHTML(f.name)}"><span class="example-dot"></span><span>${escapeHTML(f.title)}</span></button>`).join('');updateStats();renderInspector();
 }catch(err){notify(err.message);}}
 setDirty(false);refreshEditor();updateTimeline();init();
