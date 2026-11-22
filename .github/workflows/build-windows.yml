@@ -26,7 +26,7 @@ jobs:
         run: |
           npm run check
           npm test
-      - name: Verificar se a Release já existe
+      - name: Verificar a Release e completar artefatos faltantes
         id: version
         shell: pwsh
         env:
@@ -36,12 +36,21 @@ jobs:
           $tag = "v$v"
           "tag=$tag" >> $env:GITHUB_OUTPUT
           $PSNativeCommandUseErrorActionPreference = $false
-          gh release view $tag --repo "$env:GITHUB_REPOSITORY" *> $null
-          if ($LASTEXITCODE -eq 0) {
+          $assets = @(gh release view $tag --repo "$env:GITHUB_REPOSITORY" --json assets --jq '.assets[].name' 2>$null)
+          $exists = $LASTEXITCODE -eq 0
+          $required = @("MiniPascal-Studio-Setup-$v-x64.exe", "MiniPascal-Studio-Portable-$v-x64.exe", "latest.yml", "SHA256SUMS.txt")
+          $missing = @($required | Where-Object { $assets -notcontains $_ })
+          if ($exists -and $missing.Count -eq 0) {
             "publish=false" >> $env:GITHUB_OUTPUT
-            Write-Host "Release existente: aumentar version em package.json antes de publicar novamente."
+            Write-Host "Release completa: $tag. Para nova entrega incremente a versão."
           } else {
             "publish=true" >> $env:GITHUB_OUTPUT
+            if (-not $exists) {
+              gh release create $tag --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "MiniPascal Studio $tag - Windows" --notes "Instalador NSIS atualizável e versão portátil. Aplicativo sem assinatura digital." --latest
+              if ($LASTEXITCODE -ne 0) { throw "Não foi possível criar a Release $tag." }
+            } else {
+              Write-Host "Release parcial detectada; completando arquivos faltantes: $($missing -join ', ')"
+            }
           }
           exit 0
       - name: Compilar NSIS + portable e publicar latest.yml
