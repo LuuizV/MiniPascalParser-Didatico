@@ -43,6 +43,7 @@ jobs:
           } else {
             "publish=true" >> $env:GITHUB_OUTPUT
           }
+          exit 0
       - name: Compilar NSIS + portable e publicar latest.yml
         if: steps.version.outputs.publish == 'true'
         run: npx electron-builder --win nsis portable --x64 --publish always
