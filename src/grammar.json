@@ -1,0 +1,286 @@
+[
+  [
+    "S'",
+    "PROG"
+  ],
+  [
+    "PROG",
+    "program ID ; BLOCO ."
+  ],
+  [
+    "BLOCO",
+    "SECOES_VAR PROCEDIMENTOS begin LISTA_COMANDOS end"
+  ],
+  [
+    "SECOES_VAR",
+    ""
+  ],
+  [
+    "SECOES_VAR",
+    "var LISTA_DECL SECOES_VAR"
+  ],
+  [
+    "LISTA_DECL",
+    "DECL LISTA_DECL_TAIL"
+  ],
+  [
+    "LISTA_DECL_TAIL",
+    ""
+  ],
+  [
+    "LISTA_DECL_TAIL",
+    "DECL LISTA_DECL_TAIL"
+  ],
+  [
+    "DECL",
+    "LISTA_ID : TIPO ;"
+  ],
+  [
+    "LISTA_ID",
+    "ID LISTA_ID_TAIL"
+  ],
+  [
+    "LISTA_ID_TAIL",
+    ""
+  ],
+  [
+    "LISTA_ID_TAIL",
+    ", ID LISTA_ID_TAIL"
+  ],
+  [
+    "TIPO",
+    "integer"
+  ],
+  [
+    "TIPO",
+    "real"
+  ],
+  [
+    "TIPO",
+    "char"
+  ],
+  [
+    "TIPO",
+    "string"
+  ],
+  [
+    "PROCEDIMENTOS",
+    ""
+  ],
+  [
+    "PROCEDIMENTOS",
+    "procedure ID PALIST ; BLOCO ; PROCEDIMENTOS"
+  ],
+  [
+    "PALIST",
+    ""
+  ],
+  [
+    "PALIST",
+    "( LISTA_PARAM )"
+  ],
+  [
+    "LISTA_PARAM",
+    "PARAM LISTA_PARAM_TAIL"
+  ],
+  [
+    "LISTA_PARAM_TAIL",
+    ""
+  ],
+  [
+    "LISTA_PARAM_TAIL",
+    "; PARAM LISTA_PARAM_TAIL"
+  ],
+  [
+    "PARAM",
+    "OPT_VAR LISTA_ID : TIPO"
+  ],
+  [
+    "OPT_VAR",
+    ""
+  ],
+  [
+    "OPT_VAR",
+    "var"
+  ],
+  [
+    "LISTA_COMANDOS",
+    "COMANDO ; LISTA_COMANDOS_TAIL"
+  ],
+  [
+    "LISTA_COMANDOS_TAIL",
+    ""
+  ],
+  [
+    "LISTA_COMANDOS_TAIL",
+    "COMANDO ; LISTA_COMANDOS_TAIL"
+  ],
+  [
+    "COMANDO",
+    "MATCHED"
+  ],
+  [
+    "COMANDO",
+    "OPEN"
+  ],
+  [
+    "MATCHED",
+    "ID COMANDO_ID_TAIL"
+  ],
+  [
+    "MATCHED",
+    "if EXPR then MATCHED else MATCHED"
+  ],
+  [
+    "MATCHED",
+    "while EXPR do MATCHED"
+  ],
+  [
+    "MATCHED",
+    "begin LISTA_COMANDOS end"
+  ],
+  [
+    "OPEN",
+    "if EXPR then COMANDO"
+  ],
+  [
+    "OPEN",
+    "if EXPR then MATCHED else OPEN"
+  ],
+  [
+    "OPEN",
+    "while EXPR do OPEN"
+  ],
+  [
+    "COMANDO_ID_TAIL",
+    ":= EXPR"
+  ],
+  [
+    "COMANDO_ID_TAIL",
+    ""
+  ],
+  [
+    "COMANDO_ID_TAIL",
+    "( LISTA_EXPR )"
+  ],
+  [
+    "LISTA_EXPR",
+    "EXPR LISTA_EXPR_TAIL"
+  ],
+  [
+    "LISTA_EXPR_TAIL",
+    ""
+  ],
+  [
+    "LISTA_EXPR_TAIL",
+    ", EXPR LISTA_EXPR_TAIL"
+  ],
+  [
+    "EXPR",
+    "SIEXPR EXPR_TAIL"
+  ],
+  [
+    "EXPR_TAIL",
+    ""
+  ],
+  [
+    "EXPR_TAIL",
+    "OP_REL SIEXPR"
+  ],
+  [
+    "OP_REL",
+    "="
+  ],
+  [
+    "OP_REL",
+    "<"
+  ],
+  [
+    "OP_REL",
+    ">"
+  ],
+  [
+    "OP_REL",
+    "<>"
+  ],
+  [
+    "OP_REL",
+    "<="
+  ],
+  [
+    "OP_REL",
+    ">="
+  ],
+  [
+    "SIEXPR",
+    "OPT_SIGN TERMO SIEXPR_TAIL"
+  ],
+  [
+    "OPT_SIGN",
+    ""
+  ],
+  [
+    "OPT_SIGN",
+    "+"
+  ],
+  [
+    "OPT_SIGN",
+    "-"
+  ],
+  [
+    "SIEXPR_TAIL",
+    ""
+  ],
+  [
+    "SIEXPR_TAIL",
+    "+ TERMO SIEXPR_TAIL"
+  ],
+  [
+    "SIEXPR_TAIL",
+    "- TERMO SIEXPR_TAIL"
+  ],
+  [
+    "TERMO",
+    "FATOR TERMO_TAIL"
+  ],
+  [
+    "TERMO_TAIL",
+    ""
+  ],
+  [
+    "TERMO_TAIL",
+    "* FATOR TERMO_TAIL"
+  ],
+  [
+    "TERMO_TAIL",
+    "/ FATOR TERMO_TAIL"
+  ],
+  [
+    "TERMO_TAIL",
+    "div FATOR TERMO_TAIL"
+  ],
+  [
+    "TERMO_TAIL",
+    "mod FATOR TERMO_TAIL"
+  ],
+  [
+    "FATOR",
+    "NUM"
+  ],
+  [
+    "FATOR",
+    "ID"
+  ],
+  [
+    "FATOR",
+    "( EXPR )"
+  ],
+  [
+    "FATOR",
+    "STR"
+  ],
+  [
+    "FATOR",
+    "CHAR_CONST"
+  ]
+]

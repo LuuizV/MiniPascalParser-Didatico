@@ -1,0 +1,13 @@
+program procedimentos;
+var x: integer;
+procedure soma(var a, b: integer; c: real);
+var local: integer;
+begin
+local := a + b;
+a := local;
+end;
+begin
+x := 1;
+soma(x, x, 2.0);
+write("x = ", x);
+end.

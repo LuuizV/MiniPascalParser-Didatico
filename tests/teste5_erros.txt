@@ -1,0 +1,8 @@
+program erros;
+var x: real;
+begin
+x := 12.3e+;
+y := 10 @ 2;
+write("string sem fechamento);
+z := 'AB';
+/* comentario sem fechamento

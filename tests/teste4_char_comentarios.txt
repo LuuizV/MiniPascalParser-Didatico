@@ -1,0 +1,8 @@
+program chars;
+var c: char;
+begin
+/* comentário com símbolos + - := <> e várias linhas
+   que deve ser completamente ignorado */
+c := 'A';
+write("caractere", c);
+end.

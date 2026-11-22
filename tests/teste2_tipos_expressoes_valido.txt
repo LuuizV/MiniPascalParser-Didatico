@@ -1,0 +1,11 @@
+program calculo;
+var x: real;
+i: integer;
+c: char;
+s: string;
+begin
+x := (10 + 2) / 3.0;
+i := -5 + 2 * 3;
+s := "ok";
+c := 'A';
+end.

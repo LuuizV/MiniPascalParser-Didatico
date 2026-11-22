@@ -1,0 +1,73 @@
+name: Compilar e publicar Windows (.exe)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Windows x64 — teste, build e Release
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+
+      - name: Verificar código e regressões
+        run: |
+          npm run check
+          npm test
+
+      - name: Gerar instalador e executável portátil (x64)
+        run: npx electron-builder --win nsis portable --x64 --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Gerar SHA256 dos executáveis
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem 'dist/*.exe'
+          if ($files.Count -lt 2) { throw 'Esperados instalador e executável portátil (.exe).' }
+          $files | ForEach-Object { "$( (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower() )  $($_.Name)" } | Set-Content 'dist/SHA256SUMS.txt' -Encoding utf8
+
+      - name: Guardar artefatos da compilação
+        uses: actions/upload-artifact@v4
+        with:
+          name: MiniPascal-Studio-v5.0.0-Windows-x64
+          path: |
+            dist/*.exe
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publicar executáveis na Release v5.0.0
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v5.0.0
+          name: MiniPascal Studio v5.0.0 — Windows
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          generate_release_notes: false
+          body: |
+            MiniPascal Studio v5.0.0 — interface Electron, analisador léxico e sintático SLR(1).
+
+            Inclui dois arquivos para Windows x64: instalador NSIS e versão portátil.
+            O aplicativo não precisa de Python, Java ou Node.js para ser executado.
+            Execute `npm test` no código-fonte para conferir as regressões.
+            **Aviso:** os executáveis ainda não possuem assinatura de código; o Windows SmartScreen poderá exibir um aviso.
+          files: |
+            dist/*.exe
+            dist/SHA256SUMS.txt
+          fail_on_unmatched_files: true
