@@ -1,3 +1,14 @@
+# Histórico de versões
+
+## v5.6.0 — Legibilidade da análise e dos diagnósticos
+
+- Removidos títulos de página redundantes, mantendo somente ações e informações de contexto úteis.
+- Traduzidos visualmente os símbolos não terminais na árvore e na pilha; tokens e produções internas permanecem intactos.
+- Reorganizada a pilha em pares símbolo/estado, com distinção por cor e destaque dos participantes de REDUCE.
+- Adicionado indicador de linha atual/total de linhas e barra de posição durante a análise.
+- Diagnósticos exibem a linha completa e o ponto identificado; Anterior/Próximo seleciona sem trocar de aba.
+- Mantidos backend Java, duas exportações TXT e a gramática Mini_Pascal.
+
 ## v5.5.0 — Núcleo Java e interface
 
 - Parser SLR(1) e Lexer executados em processo Java com integração JSON ao Electron.

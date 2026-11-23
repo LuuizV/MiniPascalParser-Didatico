@@ -6,7 +6,7 @@
 
 **Análise léxica · Análise sintática SLR(1) · Simulação interativa**
 
-[![Versão](https://img.shields.io/badge/versão-5.5.0-8b7cf6?style=for-the-badge)](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest)
+[![Versão](https://img.shields.io/badge/versão-5.6.0-8b7cf6?style=for-the-badge)](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest)
 [![Electron](https://img.shields.io/badge/Electron-45-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![Node.js](https://img.shields.io/badge/JavaScript-Node.js-358A58?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![Windows](https://img.shields.io/badge/Windows-x64-1570CC?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest)
@@ -20,7 +20,7 @@
 
 ---
 
-## Novidades da v5.5.0
+## Novidades da v5.6.0
 
 - **Interface estável e legível:** controles A−/A+ de escala global e fonte removidos; fontes e tamanhos padrão equilibrados, com layout responsivo sem zoom que deforme componentes.
 - **Quatro áreas simples:** Código, Análise dinâmica (com simulador integrado), Árvore de derivação e Dados estáticos.
@@ -30,6 +30,14 @@
 - **Regressão preservada:** nenhuma alteração na gramática Mini_Pascal ou nas decisões do Parser. **A linguagem usada nesta etapa é Mini_Pascal, conforme o enunciado de 2026.2.**
 
 Consulte o [guia do algoritmo SLR(1)](docs/COMENTARIOS-ALGORITMO.md) e o [Guia de uso](docs/GUIA-DE-USO.md).
+
+## Melhorias da v5.6.0
+
+- Áreas de análise, árvore e resultados sem cabeçalhos repetidos.
+- Símbolos não terminais exibidos em português na árvore e na pilha, sem alterar os terminais nem a gramática.
+- Pilha agrupada por símbolo e estado, com cores por categoria e realce do topo ou da redução.
+- Linha atual em relação ao total de linhas do código e indicador discreto de posição.
+- Erros acompanhados da linha completa do código e destaque do trecho relacionado; navegação entre diagnósticos sem sair da lista.
 
 ## Sobre o projeto
 

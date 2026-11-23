@@ -1,6 +1,6 @@
 {
   "name": "minipascal",
-  "version": "5.5.0",
+  "version": "5.6.0",
   "private": true,
   "description": "Analisador MiniPascal com núcleo SLR(1) em Java e interface Electron",
   "main": "src/main.cjs",

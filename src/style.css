@@ -121,18 +121,6 @@ button:hover:not(:disabled){filter:brightness(1.15)}
   display:flex;
   flex:1;
   flex-direction:column}
-.topbar{height:69px;
-  flex:none;
-  border-bottom:1px solid #2a3950;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:0 26px;
-  gap:12px}
-.topbar>strong{font-size:1.1rem}
-.top-controls{display:flex;
-  align-items:center;
-  gap:13px}
 .primary-button{background:linear-gradient(110deg,#9078f2,#735bd3);
   color:#fff;
   border:1px solid #aa96ff;
@@ -156,7 +144,7 @@ button:hover:not(:disabled){filter:brightness(1.15)}
   overflow:hidden}
 .code-panel,.dynamic-panel,.static-panel{display:flex;
   flex-direction:column}
-.code-header,.editor-toolbar,.analysis-heading,.static-heading{display:flex;
+.code-header,.editor-toolbar,.analysis-heading{display:flex;
   align-items:center;
   justify-content:space-between;
   gap:14px;
@@ -418,8 +406,6 @@ button:hover:not(:disabled){filter:brightness(1.15)}
   min-height:0;
   overflow:auto;
   padding:19px 22px}
-.static-heading strong{font-size:1.06rem}
-.static-heading{flex:none}
 .empty-state{display:grid;
   place-items:center;
   text-align:center;
@@ -448,22 +434,24 @@ button:hover:not(:disabled){filter:brightness(1.15)}
 .section-label{margin:21px 0 8px;
   color:#c5d2e6;
   font-weight:750}
-.stack-chips{display:flex;
-  gap:7px;
-  align-items:center;
-  flex-wrap:wrap;
-  padding:9px 0;
-  overflow:auto;
-  max-height:140px}
-.chip{padding:6px 9px;
-  border-radius:7px;
-  border:1px solid #506080;
-  background:#26354d;
-  color:#e4eafa;
-  font:1rem Consolas,monospace}
-.chip.state{color:#d7c4ff;
-  border-color:#735ba8;
-  background:#393054}
+/* Cada símbolo e seu estado formam uma unidade que não se separa na quebra de linha. */
+.stack-legend{display:flex;flex-wrap:wrap;gap:8px 15px;color:var(--sub);font-size:12px;margin-top:8px}
+.stack-legend span{display:inline-flex;align-items:center;gap:6px}
+.stack-legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;background:#555f70}
+.stack-legend .legend-terminal::before{background:#23605c}
+.stack-legend .legend-nonterminal::before{background:#60417e}
+.stack-legend .legend-active::before{background:#b88837}
+.stack-chips{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;padding:11px 0;max-height:188px;overflow:auto}
+.stack-origin,.stack-pair{border-radius:8px;font:600 14px/1.3 Consolas,'Cascadia Code',monospace}
+.stack-origin{padding:13px 11px;border:1px solid #687487;color:#e0e5ed;background:#323d4d;align-self:stretch}
+.stack-pair{display:inline-flex;align-items:stretch;border:1px solid #4e6474;overflow:hidden;white-space:nowrap}
+.stack-symbol{padding:10px 12px;color:#a9eee7;background:#174a4c;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+.stack-pair.nonterminal .stack-symbol{color:#e8d0ff;background:#493268}
+.stack-state{padding:10px 9px;color:#d3dce8;background:#303b4b;border-left:1px solid rgba(255,255,255,.17)}
+.stack-state.current,.stack-origin.current{background:#715019;border-color:#d6a548;color:#ffe6aa}
+.stack-pair.reducing{outline:2px solid #e0ad50;outline-offset:-2px}
+.stack-note{font-size:12px;color:var(--sub);margin:1px 0 4px}
+.stack-note span{color:#edcf8a}
 .code-box{background:#111a29;
   border:1px solid #40516e;
   padding:13px 14px;
@@ -492,15 +480,20 @@ button:hover:not(:disabled){filter:brightness(1.15)}
   border-radius:9px;
   max-height:62vh;
   overflow:auto}
-.problem{border:1px solid #86576a;
-  border-left:4px solid #ffaaaa;
-  border-radius:9px;
-  background:#342636;
-  padding:14px 16px;
-  margin-bottom:12px}
+/* Cartões de diagnóstico preservam a linha fonte inteira e marcam o token rejeitado. */
+.problem{border:1px solid #87556b;border-left:4px solid #ff979c;border-radius:9px;background:#342636;padding:13px 16px;margin-bottom:12px}
+.problem.selected{border-color:#ff9fa8;box-shadow:0 0 0 1px rgba(255,153,169,.25)}
 .problem strong{color:#ffd0d0}
-.problem p{margin:7px 0;
-  color:#efcedb}
+.problem p{margin:7px 0 12px;color:#efcedb;overflow-wrap:anywhere}
+.problem-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:9px}
+.problem-source{display:flex;align-items:stretch;border:1px solid #73516b;border-radius:7px;background:#131d2d;overflow:hidden;max-width:100%}
+.problem-line{padding:9px 12px;color:#f0a9af;background:#263044;border-right:1px solid #614a62;font:13px/1.55 Consolas,monospace;min-width:48px;text-align:right}
+.problem-source code{display:block;flex:1;padding:9px 12px;color:#eaefff;font:14px/1.55 Consolas,monospace;overflow-x:auto;white-space:pre;tab-size:2}
+.problem-source .diagnostic-hit{padding:1px 0;color:#ffe4e4;background:#a03d4f;border-bottom:2px solid #ff9fa9;border-radius:2px}
+.problem-source .empty-line{color:var(--muted);font-style:italic}
+.problem-header .error-open{padding:7px 10px;background:#3c3450;border:1px solid #75627e;border-radius:7px;color:#e2d6f0;cursor:pointer}
+.error-nav-actions{display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+.error-position{font:600 13px Consolas,monospace;color:var(--sub);margin-right:5px}
 .healthy{background:#1c4039;
   border:1px solid #417563;
   border-radius:9px;
@@ -513,10 +506,8 @@ button:hover:not(:disabled){filter:brightness(1.15)}
   margin-bottom:14px}
 /* Árvore independente: o viewport nunca gera scrollbars ou altera o layout. */
 .tree-panel{display:flex;flex-direction:column}
-.tree-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;min-height:72px;padding:13px 18px;border-bottom:1px solid var(--border)}
-.tree-panel-heading>div:first-child{display:flex;flex-direction:column;min-width:180px;gap:2px}
-.tree-panel-heading strong{font-size:18px}
-.tree-panel-heading #treeStatus{font-size:13px;color:var(--sub)}
+.tree-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;min-height:56px;padding:9px 14px;border-bottom:1px solid var(--border)}
+.tree-panel-heading #treeStatus{font-size:13px;color:var(--sub);min-width:165px;flex:1}
 .tree-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
 .tree-toolbar button{background:#293950;border:1px solid #485b79;border-radius:8px;min-height:36px;padding:7px 12px;color:var(--text);font-size:14px}
 #treeZoomLevel{min-width:48px;text-align:center;color:var(--sub);font-size:13px}
@@ -581,13 +572,12 @@ button:hover:not(:disabled){filter:brightness(1.15)}
   min-height:48px}
 .nav-icon{width:100%}
 .main-area{padding:10px}
-.topbar{padding:0 13px}
+
 .code-actions{flex-wrap:wrap}
 .code-header{gap:10px}
 .context-strip{padding:12px}
 }
-@media(max-width:650px){.topbar{height:62px}
-.top-controls{gap:7px}
+@media(max-width:650px){
 .primary-button{padding:9px}
 .timeline-controls{flex-wrap:wrap}
 .transport-buttons{flex-wrap:wrap}
@@ -599,16 +589,15 @@ button:hover:not(:disabled){filter:brightness(1.15)}
 .main-area{padding:7px}
 }
 
-/* Logo oficial e seleção acessível dos diagnósticos. */
+/* Ícone no mesmo tom do restante da interface. */
 .brand-icon{object-fit:cover;background:transparent;border-radius:11px}
-.problem[role="button"]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 
 /* Proporções estáveis: DPI do sistema é respeitado sem escalar controles individualmente. */
 .sidebar .navigation{width:100%}
 .update-buttons .icon-button{width:100%}
 @media(max-width:1160px){.sidebar{width:212px}}
 @media(max-width:900px){.sidebar{width:70px}.nav-item{white-space:nowrap}}
-@media(max-width:850px){.code-header{align-items:flex-start}.code-actions{justify-content:flex-start}.topbar{padding:0 14px}.main-area{padding:10px}}
+@media(max-width:850px){.code-header{align-items:flex-start}.code-actions{justify-content:flex-start}.main-area{padding:10px}}
 @media(max-width:680px){.tree-panel-heading{align-items:flex-start}.tree-toolbar{justify-content:flex-start}.tree-footer{font-size:11px}}
 
 /* Em janelas compactas, preserva os nomes de navegação e Atualizações.
@@ -623,8 +612,7 @@ button:hover:not(:disabled){filter:brightness(1.15)}
 }
 
 /* Layout do editor: a numeração e o texto compartilham a mesma altura de linha. */
-body.code-mode .topbar{display:none}
-body.code-mode .main-area{padding-top:13px}
+.main-area{padding-top:13px}
 .code-label{font-size:1.04rem;white-space:nowrap}
 .code-header{justify-content:flex-start;min-height:65px;column-gap:13px}
 .code-header .example-picker{flex:0 1 285px;min-width:135px}
@@ -644,3 +632,17 @@ body.code-mode .main-area{padding-top:13px}
  .export-actions{gap:5px}
  .export-actions button{font-size:12px}
 }
+
+/* Barras sem títulos duplicados: controles e conteúdo ocupam o topo de cada área. */
+.static-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px;border-bottom:1px solid var(--border);padding-right:13px;background:#1b283a}
+.static-toolbar .analysis-tabs{border-bottom:0;flex:1;min-width:260px;padding-top:0}
+.static-toolbar .export-actions{padding:7px 0}
+.static-toolbar .export-actions button{min-height:34px}
+.focus-heading{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px 10px}
+.focus-heading span{font-variant-numeric:tabular-nums}
+.source-progress{height:5px;background:#39445c;border-radius:6px;overflow:hidden;margin:7px 0 10px}
+.source-progress>div{height:100%;width:0;background:#a993f9;border-radius:6px;transition:width .15s ease}
+@media(max-width:1050px){.static-toolbar .export-actions{padding:3px 14px 9px}.static-toolbar .analysis-tabs{width:100%}}
+@media(max-width:600px){.tree-panel-heading{align-items:flex-start}.stack-symbol{max-width:160px}.error-nav{flex-wrap:wrap}}
+
+.problem-source .diagnostic-position{color:#ff9aa8;font-weight:800}

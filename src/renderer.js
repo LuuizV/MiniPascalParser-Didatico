@@ -6,7 +6,7 @@
  */
 const $=selector=>document.querySelector(selector);
 const $$=selector=>Array.from(document.querySelectorAll(selector));
-const {escapeHTML,offsetAt,sourceLine,actionInfo,tokenReport,analysisReport}=window.MiniPascalUI;
+const {escapeHTML,offsetAt,sourceLine,actionInfo,tokenReport,analysisReport,symbolLabel,symbolDescription,lineProgress,errorExcerpt}=window.MiniPascalUI;
 const tree=window.MiniPascalTree;
 const sample=`program exemplo;
 var contador: integer;
@@ -96,7 +96,6 @@ function setMode(mode){
   document.body.classList.toggle('code-mode',mode==='code');
   $$('.studio-view').forEach(view=>view.hidden=view.id!==`view-${mode}`);
   $$('.nav-item').forEach(b=>{const active=b.dataset.mode===mode;b.classList.toggle('active',active);active?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current');});
-  $('#viewTitle').textContent={code:'Código',dynamic:'Análise dinâmica',tree:'Árvore de derivação',static:'Dados estáticos'}[mode];
   closeExamples();
   if(mode==='dynamic'){updateTimeline();renderDynamic();}
   if(mode==='tree'){
@@ -145,7 +144,12 @@ function updateTimeline(){
   $('#timelinePos').textContent=steps.length?`Etapa ${state.step+1} de ${steps.length}`:'Nenhuma etapa';
   $('#timelineState').textContent=step?`Estado q${step.detalhes.estado}`:'—';
   const range=$('#stepRange');range.disabled=!steps.length;range.max=Math.max(0,steps.length-1);range.value=state.step;
-  $('#focusLine').textContent=String(focus.line);$('#focusLabel').textContent=step?.detalhes.tipo==='REDUCE'?'Linha do próximo token':'Linha analisada';$('#focusedCode').innerHTML=focus.html;
+  const progress=lineProgress(input.value,focus.line);
+  $('#focusLine').textContent=focus.line==='—'?'—':`${progress.position} / ${progress.total}`;
+  $('#focusLabel').textContent=step?.detalhes.tipo==='REDUCE'?'Linha do próximo token':'Linha analisada';
+  $('#focusProgress').setAttribute('aria-valuenow',String(progress.percentage));
+  $('#focusProgressFill').style.width=progress.percentage+'%';
+  $('#focusedCode').innerHTML=focus.html;
   $('#actionTitle').textContent=info.title;$('#actionExplanation').textContent=info.description;
   $('#actionTechnical').textContent=info.technical||'';
   $('#actionBadge').className='action-badge '+info.kind;
@@ -185,9 +189,23 @@ async function runAnalysis(){
 }
 function empty(title,text=''){return `<div class="empty-state"><div><strong>${escapeHTML(title)}</strong><p>${escapeHTML(text)}</p></div></div>`;}
 function renderSimulator(){
-  const trace=state.result?.passos[state.step];if(!trace)return empty('Sem passos SLR(1)','Faça uma análise para acompanhar a pilha e as decisões do Parser.');
+  const trace=state.result?.passos[state.step];
+  if(!trace)return empty('Sem passos SLR(1)','Faça uma análise para acompanhar a pilha e as decisões do Parser.');
   const d=trace.detalhes,p=state.grammar?.productions[d.producao];
   const operation=d.tipo==='SHIFT'?`SHIFT → q${d.destinoShift}`:d.tipo==='REDUCE'?`REDUCE r${d.producao}`:d.tipo;
+  const nonterminals=new Set(state.grammar?.productions.map(rule=>rule.lhs)||[]);
+  const reduceCount=d.tipo==='REDUCE'?(p?.rhs.length||0):0;
+  const stack=d.simbolos.map((sym,i)=>{
+    const nonterminal=nonterminals.has(sym),label=nonterminal?symbolLabel(sym):sym;
+    const reducing=d.tipo==='REDUCE'&&i>=d.simbolos.length-reduceCount;
+    const top=i===d.simbolos.length-1;
+    const tooltip=nonterminal?`${sym}${symbolDescription(sym)?' — '+symbolDescription(sym):''}`:sym;
+    return `<span class="stack-pair ${nonterminal?'nonterminal':'terminal'} ${reducing?'reducing':''}" title="${escapeHTML(tooltip)}"><span class="stack-symbol">${escapeHTML(label)}</span><span class="stack-state ${top?'current':''}" title="Estado ${d.estados[i+1]}">q${d.estados[i+1]}</span></span>`;
+  }).join('');
+  const stackNote=d.tipo==='REDUCE'&&reduceCount>0?`${reduceCount} símbolo${reduceCount===1?'':'s'} da direita participa${reduceCount===1?'':'m'} da redução.`:
+    d.tipo==='REDUCE'?'Redução vazia: nenhum símbolo é retirado da pilha.':
+    d.tipo==='SHIFT'?'O estado em destaque será usado para empilhar o próximo token.':
+    d.tipo==='ACCEPT'?'Pilha anterior à aceitação: não precisa estar vazia.':'Topo da pilha no momento da consulta.';
   return `<div class="detail-grid">
     <div class="detail-card"><div class="label">Estado consultado</div><div class="value">q${d.estado}</div></div>
     <div class="detail-card"><div class="label">Token de entrada</div><div class="value" title="${escapeHTML(d.token?.lexema||'$')}">${escapeHTML(d.token?.lexema||'$')}</div></div>
@@ -195,7 +213,9 @@ function renderSimulator(){
     <div class="detail-card"><div class="label">Decisão da tabela ACTION</div><div class="value">${escapeHTML(operation)}</div></div>
   </div>
   <div class="section-label">Pilha antes da operação</div>
-  <div class="stack-chips"><span class="chip state">0</span>${d.simbolos.map((sym,i)=>`<span class="chip">${escapeHTML(sym)}</span><span class="chip state">${d.estados[i+1]}</span>`).join('')}</div>
+  <div class="stack-legend" aria-label="Legenda de cores da pilha"><span class="legend-state">Estado</span><span class="legend-terminal">Terminal</span><span class="legend-nonterminal">Não terminal</span><span class="legend-active">Ativo / redução</span></div>
+  <div class="stack-chips" aria-label="Pilha anterior à operação, da esquerda para a direita"><span class="stack-origin ${d.simbolos.length===0?'current':''}" title="Estado inicial">q0</span>${stack}</div>
+  <p class="stack-note">${escapeHTML(stackNote)} <span>Topo à direita.</span></p>
   ${p?`<div class="section-label">Produção reconhecida</div><div class="code-box">[${p.id}] ${escapeHTML(p.lhs)} → ${escapeHTML(p.rhs.join(' ')||'ε')}</div>`:''}
   <div class="section-label">Próximos símbolos</div><div class="code-box">${escapeHTML(trace.entrada)}</div>
   <p class="hint">A pilha representa o estado imediatamente anterior à ação. A árvore representa as reduções aplicadas até a etapa selecionada.</p>`;
@@ -216,8 +236,11 @@ function renderTreeView(){
   state.treeGeometry={width:layout.width,height:layout.height};
   const edges=layout.edges.map(e=>`<path class="tree-edge" d="M${e.x1} ${e.y1} C${e.x1} ${e.y1+25} ${e.x2} ${e.y2-25} ${e.x2} ${e.y2}"/>`).join('');
   const nodes=layout.nodes.map(n=>{
-    const label=n.label.length>17?n.label.slice(0,16)+'…':n.label;
-    return `<g class="tree-node-svg ${n.terminal?'terminal':''}" data-node="${n.id}" role="button" tabindex="0" aria-label="${escapeHTML(n.label)}" transform="translate(${n.x},${n.y})"><title>${escapeHTML(n.label)}${n.production?' — Produção '+n.production.id:''}</title><rect width="148" height="48" rx="9"/><text x="74" y="29" text-anchor="middle">${escapeHTML(label)}</text>${n.hasChildren?`<text x="137" y="15" text-anchor="end" style="font-size:13px">${n.collapsed?'+':'−'}</text>`:''}</g>`;
+    const display=n.terminal?n.label:symbolLabel(n.label);
+    const label=display.length>18?display.slice(0,17)+'…':display;
+    const description=!n.terminal?symbolDescription(n.label):'';
+    const tooltip=n.terminal?n.label:`${display} (${n.label})${description?' — '+description:''}${n.production?' · Produção '+n.production.id:''}`;
+    return `<g class="tree-node-svg ${n.terminal?'terminal':''}" data-node="${n.id}" role="button" tabindex="0" aria-label="${escapeHTML(tooltip)}" transform="translate(${n.x},${n.y})"><title>${escapeHTML(tooltip)}</title><rect width="148" height="48" rx="9"/><text x="74" y="29" text-anchor="middle">${escapeHTML(label)}</text>${n.hasChildren?`<text x="137" y="15" text-anchor="end" style="font-size:13px">${n.collapsed?'+':'−'}</text>`:''}</g>`;
   }).join('');
   world.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${layout.width} ${layout.height}" width="${layout.width}" height="${layout.height}" aria-label="Árvore de derivação">${edges}${nodes}</svg>`;
   world.style.width=layout.width+'px';world.style.height=layout.height+'px';
@@ -258,9 +281,22 @@ function renderTokens(){
 function errorsList(){const r=state.result;return [...(r?.errosLexicos||[]).map(e=>({...e,kind:'Léxico'})),...(r?.errosSintaticos||[]).map(e=>({...e,kind:'Sintático'}))];}
 function renderErrors(){
   if(!state.result)return empty('Sem diagnósticos','Execute uma análise primeiro.');
-  const errors=errorsList();if(!errors.length)return '<div class="healthy">✓ Nenhum erro encontrado na análise léxica ou sintática.</div>';
-  return `<div class="error-nav"><strong>${errors.length} diagnóstico${errors.length===1?'':'s'}</strong><div><button type="button" class="small-button" id="prevError" title="Erro anterior">◀ Anterior</button> <button type="button" class="small-button" id="nextError" title="Próximo erro">Próximo ▶</button></div></div>
-    ${errors.map((e,i)=>`<div class="problem" data-error="${i}" role="button" tabindex="0" title="Abrir no editor"><strong>${escapeHTML(e.kind)} · Linha ${e.linha}, coluna ${e.coluna}</strong><p>${escapeHTML(e.mensagem)}</p></div>`).join('')}`;
+  const errors=errorsList();
+  if(!errors.length)return '<div class="healthy">✓ Nenhum erro encontrado na análise léxica ou sintática.</div>';
+  const selected=Math.max(0,Math.min(state.selectedError,errors.length-1));
+  return `<div class="error-nav"><strong>${errors.length} diagnóstico${errors.length===1?'':'s'}</strong><div class="error-nav-actions"><span class="error-position">${selected+1} / ${errors.length}</span><button type="button" class="small-button" id="prevError" title="Selecionar diagnóstico anterior">◀ Anterior</button><button type="button" class="small-button" id="nextError" title="Selecionar próximo diagnóstico">Próximo ▶</button></div></div>
+    ${errors.map((e,i)=>{
+      const excerpt=errorExcerpt(input.value,e);
+      const before=escapeHTML(excerpt.line.slice(0,excerpt.start));
+      const middle=escapeHTML(excerpt.line.slice(excerpt.start,excerpt.end));
+      const after=escapeHTML(excerpt.line.slice(excerpt.end));
+      const colored=before+(middle?`<mark class="diagnostic-hit">${middle}</mark>`:`<span class="diagnostic-position" title="Posição informada pelo analisador">▏</span>`)+after;
+      return `<article class="problem ${i===selected?'selected':''}" data-error-card="${i}" id="error-card-${i}">
+        <div class="problem-header"><strong>${escapeHTML(e.kind)} · Linha ${e.linha}, coluna ${e.coluna}</strong><button type="button" class="small-button error-open" data-open-error="${i}" aria-label="Abrir erro da linha ${e.linha} no editor">Abrir no editor</button></div>
+        <p>${escapeHTML(e.mensagem)}</p>
+        <div class="problem-source"><span class="problem-line" aria-label="Linha ${e.linha}">${e.linha}</span><code>${colored||'<span class="empty-line">(linha em branco)</span>'}</code></div>
+      </article>`;
+    }).join('')}`;
 }
 /**
  * Exibimos apenas as produções na consulta estática. FIRST/FOLLOW, estados LR(0)
@@ -286,7 +322,7 @@ function jumpToCode(line,col=1,length=1){
 }
 function saveReport(kind='analysis'){
   if(!state.result){toast('Analise o código antes de exportar.');return;}
-  const report=kind==='tokens'?tokenReport(state.result.tokens):analysisReport(state.result,state.fileName,'5.5.0');
+  const report=kind==='tokens'?tokenReport(state.result.tokens):analysisReport(state.result,state.fileName,'5.6.0');
   window.studio?.exportReport({kind,content:report}).then(ok=>{
     if(ok)toast(kind==='tokens'?'Tokens exportados.':'Análise exportada.');
   }).catch(e=>toast(e.message));
@@ -326,7 +362,7 @@ async function closeRequest(){
 }
 function updatePanel(data){
   if(!data||typeof data!=='object')return;state.update=data;
-  $('#updateVersion').textContent='v'+String(data.version||'5.4.0');
+  $('#updateVersion').textContent='v'+String(data.version||'5.6.0');
   $('#updateMessage').textContent=String(data.message||'');
   const p=Number(data.progress);
   $('#updateProgressWrap').hidden=!(data.status==='downloading'&&Number.isFinite(p));
@@ -369,13 +405,26 @@ function bindUI(){
   $('#stepRange').addEventListener('input',e=>{pause();setStep(Number(e.target.value));});
   $('#speed').addEventListener('change',e=>{const playing=state.playing;pause();state.speed=Number(e.target.value);savePreferences();if(playing)play();});
   $$('[data-static-tab]').forEach(b=>b.addEventListener('click',()=>{state.staticTab=b.dataset.staticTab;renderStatic();}));
+  function selectError(delta){
+    const errors=errorsList();if(!errors.length)return;
+    state.selectedError=(state.selectedError+delta+errors.length)%errors.length;
+    renderStatic();
+    $('#error-card-'+state.selectedError)?.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
   $('#staticContent').addEventListener('click',event=>{
-    const t=event.target.closest('[data-token]');if(t&&state.result){const token=state.result.tokens[Number(t.dataset.token)];jumpToCode(token.linha,token.coluna,token.lexema.length);return;}
-    const e=event.target.closest('[data-error]');if(e){const list=errorsList();state.selectedError=Number(e.dataset.error);const item=list[state.selectedError];if(item)jumpToCode(item.linha,item.coluna,item.lexema?.length||item.encontrado?.length||1);return;}
-    if(event.target.closest('#nextError')){const list=errorsList();if(list.length){state.selectedError=(state.selectedError+1)%list.length;const e=list[state.selectedError];jumpToCode(e.linha,e.coluna,e.lexema?.length||1);}return;}
-    if(event.target.closest('#prevError')){const list=errorsList();if(list.length){state.selectedError=(state.selectedError-1+list.length)%list.length;const e=list[state.selectedError];jumpToCode(e.linha,e.coluna,e.lexema?.length||1);}return;}
+    const previous=event.target.closest('#prevError'),next=event.target.closest('#nextError');
+    if(previous){selectError(-1);return;}
+    if(next){selectError(1);return;}
+    const link=event.target.closest('[data-open-error]');
+    if(link){
+      state.selectedError=Number(link.dataset.openError);
+      const item=errorsList()[state.selectedError];
+      if(item)jumpToCode(item.linha,item.coluna,item.lexema?.length||item.encontrado?.length||1);
+      return;
+    }
+    const t=event.target.closest('[data-token]');
+    if(t&&state.result){const token=state.result.tokens[Number(t.dataset.token)];jumpToCode(token.linha,token.coluna,token.lexema.length);}
   });
-  $('#staticContent').addEventListener('keydown',event=>{if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-error]')){event.preventDefault();event.target.click();}});
   // A árvore é um mapa manipulável: somente o fundo inicia arraste.
   // Clique no nó preserva o comportamento de recolher/expandir a derivação.
   $('#treeWorld').addEventListener('click',event=>{

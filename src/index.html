@@ -20,7 +20,7 @@
     </nav>
     <div class="side-bottom">
       <section class="update-card" aria-label="Atualizações">
-        <div class="update-heading"><strong>Atualizações</strong><span id="updateVersion">v5.5.0</span></div>
+        <div class="update-heading"><strong>Atualizações</strong><span id="updateVersion">v5.6.0</span></div>
         <p id="updateMessage" aria-live="polite">Verificando versão...</p>
         <div class="update-progress" id="updateProgressWrap" hidden><div id="updateProgressBar"></div></div>
         <div class="update-buttons"><button id="btnUpdate" class="update-action" type="button">Verificar</button><button id="btnReleases" class="icon-button" type="button" title="Abrir Releases oficiais" aria-label="Abrir Releases">Releases</button></div>
@@ -29,11 +29,6 @@
   </aside>
 
   <div class="workbench">
-    <header class="topbar">
-      <strong id="viewTitle">Código</strong>
-
-    </header>
-
     <main class="main-area">
       <section id="view-code" class="studio-view" aria-label="Editor de código">
         <div class="surface code-panel">
@@ -67,7 +62,7 @@
             <div class="timeline-main"><div class="timeline-labels"><span id="timelinePos">Nenhuma etapa</span><span id="timelineState">—</span></div><input id="stepRange" type="range" min="0" max="0" value="0" disabled aria-label="Selecionar etapa"/><div class="timeline-ends"><span>Início</span><span>Fim</span></div></div>
           </div>
           <div class="context-strip">
-            <div class="source-focus"><div class="subheading"><span id="focusLabel">Linha analisada</span> <span id="focusLine">—</span></div><div id="focusedCode" class="focused-code">Execute uma análise para acompanhar o código.</div></div>
+            <div class="source-focus"><div class="subheading focus-heading"><span id="focusLabel">Linha analisada</span> <span id="focusLine">—</span></div><div class="source-progress" role="progressbar" aria-label="Posição no código" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="focusProgress"><div id="focusProgressFill"></div></div><div id="focusedCode" class="focused-code">Execute uma análise para acompanhar o código.</div></div>
             <div class="action-focus" id="actionBox"><div class="action-heading"><span id="actionBadge" class="action-badge">AGUARDANDO</span><strong id="actionTitle">Pronto para analisar</strong></div><p id="actionExplanation">O Parser mostrará aqui cada decisão da análise.</p><div id="actionTechnical" class="technical-note"></div></div>
           </div>
           <div class="simulation-title">Simulador SLR(1) <span>Pilha e decisão do Parser</span></div>
@@ -78,7 +73,7 @@
       <section id="view-tree" class="studio-view" aria-label="Árvore de derivação" hidden>
         <div class="surface tree-panel">
           <div class="tree-panel-heading">
-            <div><strong>Árvore de derivação</strong><span id="treeStatus" role="status">Execute uma análise para visualizar a árvore.</span></div>
+            <span id="treeStatus" role="status">Execute uma análise para visualizar a árvore.</span>
             <div class="tree-toolbar" aria-label="Navegação da árvore">
               <button id="treeCenter" type="button">Centralizar</button>
               <button id="treeZoomOut" type="button" aria-label="Diminuir zoom">−</button>
@@ -97,8 +92,7 @@
 
       <section id="view-static" class="studio-view" aria-label="Dados estáticos" hidden>
         <div class="surface static-panel">
-          <div class="static-heading"><strong>Resultados e referências</strong><div class="export-actions"><button id="btnExportTokens" type="button" class="tool-button">Exportar tokens TXT</button><button id="btnExport" type="button" class="tool-button">Exportar análise TXT</button></div></div>
-          <div class="analysis-tabs" role="tablist" aria-label="Informações da análise"><button data-static-tab="tokens" class="active" role="tab" aria-selected="true">Tokens</button><button data-static-tab="grammar" role="tab" aria-selected="false">Gramática</button><button data-static-tab="errors" role="tab" aria-selected="false">Erros <span id="errorTabCount"></span></button></div>
+          <div class="static-toolbar"><div class="analysis-tabs" role="tablist" aria-label="Informações da análise"><button data-static-tab="tokens" class="active" role="tab" aria-selected="true">Tokens</button><button data-static-tab="grammar" role="tab" aria-selected="false">Gramática</button><button data-static-tab="errors" role="tab" aria-selected="false">Erros <span id="errorTabCount"></span></button></div><div class="export-actions"><button id="btnExportTokens" type="button" class="tool-button">Exportar tokens TXT</button><button id="btnExport" type="button" class="tool-button">Exportar análise TXT</button></div></div>
           <div id="staticContent" class="content-area" role="tabpanel"></div>
         </div>
       </section>
