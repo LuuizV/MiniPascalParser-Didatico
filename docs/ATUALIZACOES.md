@@ -31,8 +31,8 @@ Antes de iniciar outra versão, leia o [Plano Mestre](PLANO-MESTRE.md), registre
 
 | Arquivo | Função |
 |---|---|
-| `MiniPascal-Studio-Setup-X.Y.Z-x64.exe` | Instalador NSIS elegível ao auto-update. |
-| `MiniPascal-Studio-Portable-X.Y.Z-x64.exe` | Versão sem instalação, atualizada manualmente. |
+| `MiniPascal-Setup-X.Y.Z-x64.exe` | Instalador NSIS elegível ao auto-update. |
+| `MiniPascal-Portable-X.Y.Z-x64.exe` | Versão sem instalação, atualizada manualmente. |
 | `latest.yml` | Feed de versão e hashes reconhecido pelo `electron-updater`. |
 | `*.blockmap` | Suporte a download diferencial, quando produzido. |
 | `SHA256SUMS.txt` | Hashes públicos para conferência manual dos executáveis. |

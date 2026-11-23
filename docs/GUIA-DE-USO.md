@@ -1,4 +1,4 @@
-# Guia de utilização — MiniPascal Studio
+# Guia de utilização — MiniPascal
 
 [Início](../README.md) · [Arquitetura](ARQUITETURA.md) · [Plano Mestre](PLANO-MESTRE.md)
 

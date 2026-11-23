@@ -9,8 +9,6 @@
   --sub:#becbde;
   --muted:#a1b0c5;
   --accent:#a28aff;
-  --purple:#7257d6;
-  --cyan:#69d8e7;
   --success:#77deb5;
   --danger:#ffaaaa;
   --warn:#f2bf86;
@@ -435,8 +433,6 @@ button:hover:not(:disabled){filter:brightness(1.15)}
 .empty-state strong{display:block;
   color:var(--text);
   font-size:1.1rem}
-.detail-heading{font-size:1.1rem;
-  margin:0 0 16px}
 .detail-grid{display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
   gap:12px}
@@ -620,10 +616,6 @@ button:hover:not(:disabled){filter:brightness(1.15)}
   overflow:hidden;
   clip:rect(0,0,0,0);
   white-space:nowrap}
-.presentation .sidebar{display:none}
-.presentation .topbar{height:58px}
-.presentation .main-area{padding:9px}
-.presentation{--ui-scale:1.15}
 @media(max-width:1160px){.sidebar{width:185px}
 .nav-item{padding:10px 9px}
 .context-strip{grid-template-columns:1fr}
@@ -662,3 +654,8 @@ button:hover:not(:disabled){filter:brightness(1.15)}
 .editor-toolbar{align-items:flex-start}
 .main-area{padding:7px}
 }
+
+/* Identidade MiniPascal e foco acessível dos diagnósticos. */
+.brand-icon{object-fit:cover;background:transparent;border-radius:11px}
+.problem[role="button"]{cursor:pointer}
+.problem[role="button"]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}

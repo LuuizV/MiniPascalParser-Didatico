@@ -1,4 +1,4 @@
-# AGENTS — Regras permanentes do MiniPascal Studio
+# AGENTS — Regras permanentes do MiniPascal
 
 ## Governança obrigatória
 
@@ -22,3 +22,7 @@
 ## Créditos
 
 Participantes: **Luiz Vicente Gomes Jirardi**, **Raimundo José Santiago Netto**, **Jader Levi Nascimento Abreu Azevedo**. Professor: **José Carlos Martins Oliveira**. Universidade Estadual do Sudoeste da Bahia — Compiladores.
+
+## Publicação obrigatória após autorização
+
+Cada ciclo autorizado deve incluir commit, nova versão, testes, build Windows x64, artefatos (NSIS, Portable, latest.yml, blockmap, SHA256) e **Release oficial pública validada**. Não encerrar a entrega como apenas ZIP ou commit. Continuar acumulando alterações até autorização explícita para implementar o pacote.

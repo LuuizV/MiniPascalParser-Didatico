@@ -14,7 +14,7 @@ O executável distribuído **não depende de Java, Python ou Node.js**. Os pacot
 ### Verificar o SHA256 no PowerShell
 
 ```powershell
-Get-FileHash .\MiniPascal-Studio-Setup-5.1.0-x64.exe -Algorithm SHA256
+Get-FileHash .\MiniPascal-Setup-5.1.0-x64.exe -Algorithm SHA256
 ```
 
 Compare com a linha correspondente em `SHA256SUMS.txt`, ajustando o nome para o arquivo efetivamente baixado.

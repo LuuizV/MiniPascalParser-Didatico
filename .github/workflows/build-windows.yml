@@ -43,7 +43,7 @@ jobs:
             if ($release.isDraft -and @($release.assets).Count -eq 0) {
               "publish=true" >> $env:GITHUB_OUTPUT
             } elseif (!$release.isDraft) {
-              $required = @("MiniPascal-Studio-Setup-$version-x64.exe", "MiniPascal-Studio-Portable-$version-x64.exe", 'latest.yml', 'SHA256SUMS.txt')
+              $required = @("MiniPascal-Setup-$version-x64.exe", "MiniPascal-Portable-$version-x64.exe", 'latest.yml', 'SHA256SUMS.txt')
               $assets = @($release.assets | ForEach-Object { $_.name })
               if (@($required | Where-Object { $assets -notcontains $_ }).Count -ne 0) { throw "Release $tag publica incompleta; revisar manualmente." }
               "publish=false" >> $env:GITHUB_OUTPUT
@@ -52,14 +52,18 @@ jobs:
               throw "Rascunho $tag contem artefatos; revise antes de executar novamente."
             }
           } else {
-            gh release create $tag --draft --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "MiniPascal Studio $tag - Windows" --notes "Rascunho em validacao."
+            gh release create $tag --draft --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "MiniPascal $tag - Windows" --notes "Rascunho em validacao."
             if ($LASTEXITCODE -ne 0) { throw "Falha criando rascunho $tag" }
             "publish=true" >> $env:GITHUB_OUTPUT
           }
       - name: Compilar NSIS e portatil no rascunho
         if: steps.version.outputs.publish == 'true'
         shell: pwsh
-        run: npx electron-builder --win nsis portable --x64 --publish always
+        run: |
+          npm run icon:win
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao gerar o icone Windows.' }
+          npx electron-builder --win nsis portable --x64 --publish always
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao compilar os instaladores.' }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
@@ -68,11 +72,12 @@ jobs:
         shell: pwsh
         run: |
           $version = node -p "require('./package.json').version"
-          $setup = "MiniPascal-Studio-Setup-$version-x64.exe"
-          $portable = "MiniPascal-Studio-Portable-$version-x64.exe"
+          $setup = "MiniPascal-Setup-$version-x64.exe"
+          $portable = "MiniPascal-Portable-$version-x64.exe"
           foreach ($name in @($setup, $portable, 'latest.yml', "$setup.blockmap")) {
             if (!(Test-Path "dist/$name")) { throw "Artefato ausente: $name" }
           }
+          if (!(Test-Path 'assets/minipascal.ico')) { throw 'Icone ICO ausente do build.' }
           $manifest = Get-Content dist/latest.yml -Raw
           if (!$manifest.Contains("version: $version") -or !$manifest.Contains($setup) -or !$manifest.Contains('sha512:')) {
             throw 'latest.yml nao corresponde a versao, ao instalador ou ao hash esperado.'
@@ -92,13 +97,13 @@ jobs:
           $release = gh release view "$env:RELEASE_TAG" --repo "$env:GITHUB_REPOSITORY" --json isDraft,assets | ConvertFrom-Json
           if (!$release.isDraft) { throw 'Release publica antes da verificacao final.' }
           $version = node -p "require('./package.json').version"
-          $setup = "MiniPascal-Studio-Setup-$version-x64.exe"
-          $required = @($setup, "MiniPascal-Studio-Portable-$version-x64.exe", 'latest.yml', "$setup.blockmap", 'SHA256SUMS.txt')
+          $setup = "MiniPascal-Setup-$version-x64.exe"
+          $required = @($setup, "MiniPascal-Portable-$version-x64.exe", 'latest.yml', "$setup.blockmap", 'SHA256SUMS.txt')
           $assets = @($release.assets | ForEach-Object { $_.name })
           foreach ($name in $required) {
             if ($assets -notcontains $name) { throw "Artefato $name ausente no GitHub. Release permanece rascunho." }
           }
-          gh release edit "$env:RELEASE_TAG" --repo "$env:GITHUB_REPOSITORY" --draft=false --latest --title "MiniPascal Studio $env:RELEASE_TAG - Windows" --notes "Setup NSIS atualizado por Releases, Portable manual, latest.yml, blockmap e SHA256. Aplicativo sem assinatura de codigo."
+          gh release edit "$env:RELEASE_TAG" --repo "$env:GITHUB_REPOSITORY" --draft=false --latest --title "MiniPascal $env:RELEASE_TAG - Windows" --notes "Setup NSIS atualizado por Releases, Portable manual, latest.yml, blockmap e SHA256. Aplicativo sem assinatura de codigo."
           if ($LASTEXITCODE -ne 0) { throw 'Falha ao publicar. Release permanece rascunho.' }
           $after = gh release view "$env:RELEASE_TAG" --repo "$env:GITHUB_REPOSITORY" --json isDraft | ConvertFrom-Json
           if ($after.isDraft) { throw 'Release continua em rascunho.' }
@@ -106,7 +111,7 @@ jobs:
         if: steps.version.outputs.publish == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: MiniPascal-Studio-${{ steps.version.outputs.tag }}-Windows-x64
+          name: MiniPascal-${{ steps.version.outputs.tag }}-Windows-x64
           path: |
             dist/*.exe
             dist/latest.yml

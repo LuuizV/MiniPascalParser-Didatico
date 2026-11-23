@@ -1,8 +1,8 @@
-# Plano Mestre — Governança de Atualizações do MiniPascal Studio
+# Plano Mestre — Governança de Atualizações do MiniPascal
 
 > **Documento de referência obrigatório entre versões.** O próximo ciclo de desenvolvimento só começa depois de revisar este plano, o estado da branch principal, as Releases e os testes.
 
-**Projeto:** MiniPascal Studio · **Repositório:** `LuuizV/MiniPascalParser-Didatico`  
+**Projeto:** MiniPascal · **Repositório:** `LuuizV/MiniPascalParser-Didatico`  
 **Base:** Electron + JavaScript, Lexer, Parser SLR(1) · **Primeira aplicação:** v5.1.2
 
 ## 1. Princípios imutáveis
@@ -66,3 +66,7 @@
 **Disciplina:** Compiladores — Universidade Estadual do Sudoeste da Bahia (UESB).
 
 Este plano poderá ser revisado por novas decisões do grupo. Mudanças de gramática, métodos de análise ou requisitos de entrega acadêmica exigem revisão explícita de escopo e de testes.
+
+## Regra obrigatória de entrega
+
+Depois de uma autorização para implementar a atualização acumulada, a entrega deve incluir **Release pública no GitHub com Setup, Portable, latest.yml, blockmap e SHA256**. Não finalizar somente com pacote ZIP ou commit. Aguardar aprovação dos testes e build antes de publicar a Release.

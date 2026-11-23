@@ -1,4 +1,4 @@
-# Arquitetura do MiniPascal Studio
+# Arquitetura do MiniPascal
 
 A interface é um cliente Electron isolado da lógica de análise. A comunicação segue o modelo IPC controlado do Electron.
 

@@ -10,10 +10,9 @@ const MAX_SOURCE=500000;
 const base=path.join(__dirname,'..');
 let win=null,allowClose=false,currentWorker=null,workerSeq=0;
 const approvedPaths=new Set();
-const VALID_SIZES={compact:0,normal:1,large:2};
 function createWindow(){
   allowClose=false;
-  win=new BrowserWindow({width:1500,height:950,minWidth:850,minHeight:640,backgroundColor:'#0d1423',title:'MiniPascal Studio',autoHideMenuBar:true,show:false,
+  win=new BrowserWindow({width:1500,height:950,minWidth:850,minHeight:640,backgroundColor:'#0d1423',title:'MiniPascal',icon:path.join(base,'assets','minipascal.png'),autoHideMenuBar:true,show:false,
     webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true}});
   win.loadFile(path.join(__dirname,'index.html'));
   win.once('ready-to-show',()=>win.show());

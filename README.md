@@ -1,12 +1,12 @@
 <div align="center">
 
-# ◈ MiniPascal Studio
+# ◈ MiniPascal
 
 ### Uma bancada visual para compreender compiladores, token por token.
 
 **Análise léxica · Análise sintática SLR(1) · Simulação interativa**
 
-[![Versão](https://img.shields.io/badge/versão-5.1.2-8b7cf6?style=for-the-badge)](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest)
+[![Versão](https://img.shields.io/badge/versão-5.3.0-8b7cf6?style=for-the-badge)](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest)
 [![Electron](https://img.shields.io/badge/Electron-45-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![Node.js](https://img.shields.io/badge/JavaScript-Node.js-358A58?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![Windows](https://img.shields.io/badge/Windows-x64-1570CC?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest)
@@ -20,21 +20,21 @@
 
 ---
 
-## Novidades da v5.2.0
+## Novidades da v5.3.0
 
 - **Editor maior e contextual:** Novo texto, Importar arquivo e Salvar na aba Código; seletor de exemplos recolhível.
 - **Análise dinâmica sincronizada:** linha do tempo, código da linha atual, cartão didático e simulador.
 - **Árvore gráfica:** conexões reais em SVG, zoom, expansão, recolhimento e exportação.
 - **Dados estáticos:** tokens, gramática e diagnósticos organizados em um mesmo ambiente.
-- **Mais legibilidade:** fontes ampliadas, escala global persistente, ações sem duplicidade e modo apresentação.
+- **Mais legibilidade:** fontes ampliadas, escala global persistente, ações sem duplicidade e identidade visual unificada.
 - **Mais segurança para o trabalho:** proteção ao fechar com edições pendentes e análise isolada em Worker Thread.
 - **Regressão preservada:** 71 produções, 130 estados LR(0), 611 passos de referência.
 
-Consulte o [Plano de entrega v5.2.0](docs/PLANO-MESTRE-v5.2.0.md) e o [Guia de uso atualizado](docs/GUIA-DE-USO.md).
+Consulte o [Plano de entrega v5.3.0](docs/PLANO-MESTRE-v5.3.0.md) e o [Guia de uso atualizado](docs/GUIA-DE-USO.md).
 
 ## Sobre o projeto
 
-O **MiniPascal Studio** é uma ferramenta acadêmica para estudar **compiladores** a partir do reconhecimento de programas em uma gramática didática de Mini_Pascal. O código é processado em duas fases integradas: um **Lexer** identifica os tokens; em seguida, o **Parser SLR(1)** consulta tabelas **ACTION/GOTO** para decidir entre *SHIFT*, *REDUCE*, *ACCEPT* e tratamento de erros.
+O **MiniPascal** é uma ferramenta acadêmica para estudar **compiladores** a partir do reconhecimento de programas em uma gramática didática de Mini_Pascal. O código é processado em duas fases integradas: um **Lexer** identifica os tokens; em seguida, o **Parser SLR(1)** consulta tabelas **ACTION/GOTO** para decidir entre *SHIFT*, *REDUCE*, *ACCEPT* e tratamento de erros.
 
 A diferença é que o estudante pode **enxergar o processo acontecendo**: acompanhar a pilha, explorar os estados, consultar as regras e avançar ou retroceder no histórico de análise. O projeto começou em Java e foi reimplementado em **Electron, HTML, CSS e JavaScript**, preservando o comportamento verificado da gramática e do analisador fornecidos.
 
@@ -51,16 +51,15 @@ A diferença é que o estudante pode **enxergar o processo acontecendo**: acompa
 | **Gramática** | Produções, conjuntos FIRST/FOLLOW e estados LR(0). |
 | **Árvore de derivação** | Estrutura concreta construída com as reduções realizadas. |
 | **Diagnósticos** | Erros léxicos e sintáticos, posição e navegação até o código. |
-| **Modo apresentação** | Visualização ampliada para demonstração em sala de aula. |
 | **Atualizações** | Consulta às Releases oficiais; instalador NSIS atualizável com confirmação. |
 
 ## Comece por aqui
 
 ### Baixar e instalar no Windows
 
-1. Abra **[Releases — MiniPascal Studio](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest)**.
-2. Baixe **`MiniPascal-Studio-Setup-<versão>-x64.exe`** para instalar no computador e receber futuras atualizações pelo aplicativo.
-3. Se preferir executar sem instalar, utilize o **`MiniPascal-Studio-Portable-<versão>-x64.exe`**, que precisa ser substituído manualmente a cada nova versão.
+1. Abra **[Releases — MiniPascal](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest)**.
+2. Baixe **`MiniPascal-Setup-<versão>-x64.exe`** para instalar no computador e receber futuras atualizações pelo aplicativo.
+3. Se preferir executar sem instalar, utilize o **`MiniPascal-Portable-<versão>-x64.exe`**, que precisa ser substituído manualmente a cada nova versão.
 4. Abra o aplicativo, carregue um exemplo e clique em **Analisar código**.
 
 **Não é necessário instalar Java, Python ou Node.js para executar o `.exe`.** Os executáveis são gerados para Windows x64 por GitHub Actions. Veja as instruções detalhadas em [Instalação](docs/INSTALACAO.md).
@@ -105,7 +104,7 @@ A implementação atual possui **71 produções**, **130 estados LR(0)** e mant�
 
 ## Plano Mestre entre atualizações
 
-Antes de cada versão, aplicamos o [Plano Mestre de Atualizações](docs/PLANO-MESTRE.md): diagnóstico, correções prioritárias, testes, Release validada e registro das limitações. Releases só ficam visíveis após o manifesto e instaladores estarem presentes.
+Antes de cada versão, aplicamos o [Plano Mestre de Atualizações](docs/PLANO-MESTRE.md): diagnóstico, correções prioritárias, testes, Release validada e registro das limitações. Releases só ficam visíveis após o manifesto e instaladores estarem presentes. **Regra permanente:** cada pacote de atualização autorizado será entregue por uma Release oficial, não apenas como commit ou ZIP.
 
 ## Atualizações pelas Releases
 
@@ -127,7 +126,7 @@ O aplicativo possui apenas três áreas, sem banners promocionais ou rodapé de 
 - **Análise dinâmica:** linha do tempo, controles SLR(1), pilha, ações SHIFT/REDUCE e árvore de derivação no mesmo espaço.
 - **Dados estáticos:** tokens, gramática (incluindo FIRST/FOLLOW e ACTION/GOTO) e erros, separados da reprodução.
 
-Os atalhos `Ctrl+1`, `Ctrl+2` e `Ctrl+3` abrem essas áreas; `Ctrl+4` leva diretamente à gramática. O botão **Analisar código** executa a análise e abre o acompanhamento dinâmico.
+Os atalhos `Ctrl+1`, `Ctrl+2` e `Ctrl+3` abrem essas áreas. O botão **Analisar código** executa a análise e abre o acompanhamento dinâmico.
 
 ## Trabalho acadêmico
 
@@ -147,6 +146,8 @@ Este repositório apresenta uma evolução da atividade prática de análise sin
 
 ```text
 MiniPascalParser-Didatico/
+├── assets/                 # Ícone PNG oficial
+├── scripts/                # Geração de ícone ICO para Windows
 ├── src/
 │   ├── core.cjs              # Lexer, gramática e Parser SLR(1)
 │   ├── grammar.json          # Produções numeradas
@@ -187,7 +188,7 @@ MiniPascalParser-Didatico/
 
 <div align="center">
 
-**MiniPascal Studio** — um projeto acadêmico para tornar o funcionamento dos analisadores léxico e sintático mais visível, verificável e compreensível.
+**MiniPascal** — um projeto acadêmico para tornar o funcionamento dos analisadores léxico e sintático mais visível, verificável e compreensível.
 
 [Repositório](https://github.com/LuuizV/MiniPascalParser-Didatico) · [Releases](https://github.com/LuuizV/MiniPascalParser-Didatico/releases) · [GitHub Actions](https://github.com/LuuizV/MiniPascalParser-Didatico/actions)
 

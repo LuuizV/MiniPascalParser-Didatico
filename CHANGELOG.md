@@ -1,4 +1,16 @@
-# Registro de versões — MiniPascal Studio
+# Registro de versões — MiniPascal
+
+## v5.3.0 — MiniPascal, identidade visual e limpeza
+
+- Nome do aplicativo, instalador e edição portátil alterado de MiniPascal Studio para **MiniPascal**, preservando o `appId` do Electron para manter a identidade de atualização.
+- Ícone aprovado incluído em PNG e gerador de ICO multirresolução para Windows.
+- Removidos o Modo Apresentação, seu botão, evento e estilos exclusivos.
+- Botões de Expandir todos e Voltar ao estado atual são exibidos apenas quando úteis.
+- A ajuda passa a se chamar Ver gramática; cartão de erro acessível por clique ou teclado, sem botão duplicado.
+- Limpeza conservadora do CSS, preservando Lexer, SLR(1), árvore, simulador e atualizador.
+- Workflow Windows passa a gerar o ícone e validar os novos nomes de artefatos antes de tornar a Release pública.
+- Regra permanente: **toda atualização autorizada deve gerar uma Release no GitHub**, além de commit e testes. Não publicar mudanças isoladas sem autorização.
+
 
 ## v5.2.0 — Refino de IHC e confiabilidade
 

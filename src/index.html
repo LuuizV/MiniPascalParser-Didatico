@@ -4,13 +4,14 @@
   <meta charset="UTF-8"/>
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'self'"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>MiniPascal Studio</title>
+  <title>MiniPascal</title>
   <link rel="stylesheet" href="./style.css"/>
+  <link rel="icon" type="image/png" href="../assets/minipascal.png"/>
 </head>
 <body>
 <div class="app-shell">
   <aside class="sidebar" aria-label="Navegação">
-    <div class="brand"><div class="brand-icon" aria-hidden="true">{ }</div><strong>MiniPascal <span>Studio</span></strong></div>
+    <div class="brand"><img class="brand-icon" src="../assets/minipascal.png" alt="" aria-hidden="true"/><strong>MiniPascal</strong></div>
     <nav class="navigation" aria-label="Áreas">
       <button type="button" class="nav-item active" data-mode="code" aria-current="page"><span class="nav-icon" aria-hidden="true">{ }</span> <span>Código</span></button>
       <button type="button" class="nav-item" data-mode="dynamic"><span class="nav-icon" aria-hidden="true">▶</span> <span>Análise dinâmica</span></button>
@@ -18,7 +19,7 @@
     </nav>
     <div class="side-bottom">
       <section class="update-card" aria-label="Atualizações">
-        <div class="update-heading"><strong>Atualizações</strong><span id="updateVersion">v5.2.0</span></div>
+        <div class="update-heading"><strong>Atualizações</strong><span id="updateVersion">v5.3.0</span></div>
         <p id="updateMessage" aria-live="polite">Verificando versão...</p>
         <div class="update-progress" id="updateProgressWrap" hidden><div id="updateProgressBar"></div></div>
         <div class="update-buttons"><button id="btnUpdate" class="update-action" type="button">Verificar</button><button id="btnReleases" class="icon-button" type="button" title="Abrir Releases oficiais" aria-label="Abrir Releases">↗</button></div>
@@ -54,13 +55,13 @@
             <div id="lineNumbers" class="line-numbers" aria-hidden="true"></div>
             <div class="editor-layer"><pre id="codeHighlight" aria-hidden="true"></pre><textarea id="codeInput" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Código MiniPascal"></textarea></div>
           </div>
-          <div class="editor-toolbar"><div class="editor-info"><span id="editorCaret">Linha 1, coluna 1</span><span id="editorLines">1 linha</span></div><div class="editor-tool-actions"><button id="btnFontMinus" title="Diminuir fonte do código" type="button">A−</button><button id="btnFontPlus" title="Aumentar fonte do código" type="button">A+</button><button id="btnHelp" type="button">Ajuda da linguagem</button></div></div>
+          <div class="editor-toolbar"><div class="editor-info"><span id="editorCaret">Linha 1, coluna 1</span><span id="editorLines">1 linha</span></div><div class="editor-tool-actions"><button id="btnFontMinus" title="Diminuir fonte do código" type="button">A−</button><button id="btnFontPlus" title="Aumentar fonte do código" type="button">A+</button><button id="btnHelp" type="button">Ver gramática</button></div></div>
         </div>
       </section>
 
       <section id="view-dynamic" class="studio-view" aria-label="Análise dinâmica" hidden>
         <div class="surface dynamic-panel">
-          <div class="analysis-heading"><div class="analysis-summary"><strong id="statResult">Aguardando análise</strong><span id="statTokens">— tokens</span><span id="statSteps">— passos</span><span id="statErrors">— erros</span></div><button type="button" class="tool-button" id="btnPresentation">Modo apresentação</button></div>
+          <div class="analysis-heading"><div class="analysis-summary"><strong id="statResult">Aguardando análise</strong><span id="statTokens">— tokens</span><span id="statSteps">— passos</span><span id="statErrors">— erros</span></div></div>
           <div class="timeline-block">
             <div class="timeline-controls"><strong>Linha do tempo</strong><div class="transport-buttons"><button id="btnFirst" title="Primeiro passo" aria-label="Primeiro passo">⏮</button><button id="btnPrev" title="Passo anterior" aria-label="Passo anterior">◀</button><button id="btnPlay" class="play-button" title="Reproduzir" aria-label="Reproduzir">▶</button><button id="btnNext" title="Próximo passo" aria-label="Próximo passo">▶|</button><button id="btnLast" title="Último passo" aria-label="Último passo">⏭</button><select id="speed" aria-label="Velocidade de execução"><option value="2000">0,5×</option><option value="1200">1×</option><option value="700" selected>2×</option><option value="350">4×</option></select></div></div>
             <div class="timeline-main"><div class="timeline-labels"><span id="timelinePos">Nenhuma etapa</span><span id="timelineState">—</span></div><input id="stepRange" type="range" min="0" max="0" value="0" disabled aria-label="Selecionar etapa"/><div class="timeline-ends"><span>Início</span><span>Fim</span></div></div>

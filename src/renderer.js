@@ -1,5 +1,5 @@
 'use strict';
-/** Controlador de apresentação. A análise é realizada pelo núcleo SLR(1) do processo principal. */
+/** Controlador de interface. A análise é realizada em Worker Thread pelo núcleo SLR(1). */
 const $=selector=>document.querySelector(selector);
 const $$=selector=>Array.from(document.querySelectorAll(selector));
 const {escapeHTML,offsetAt,sourceLine,actionInfo}=window.MiniPascalUI;
@@ -165,7 +165,7 @@ function renderTree(){
     return `<g class="tree-node-svg ${n.terminal?'terminal':''}" data-node="${n.id}" role="button" tabindex="0" aria-label="${escapeHTML(n.label)}" transform="translate(${n.x},${n.y})"><title>${escapeHTML(n.label)}${n.production?' — Produção '+n.production.id:''}</title><rect width="${nodeW}" height="${nodeH}" rx="9"/><text x="${nodeW/2}" y="${nodeH/2+5}" text-anchor="middle">${escapeHTML(label)}</text>${n.hasChildren?`<text x="137" y="15" text-anchor="end" style="font-size:13px">${n.collapsed?'+':'−'}</text>`:''}</g>`;
   }).join('');
   const graphic=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${layout.width} ${layout.height}" width="${Math.round(layout.width*state.zoom)}" height="${Math.round(layout.height*state.zoom)}" aria-label="Árvore gráfica de derivação">${edges}${nodes}</svg>`;
-  return `<div class="tree-actions"><strong>Derivação até a etapa ${state.step+1}</strong><div><button id="treeZoomOut" title="Diminuir zoom">−</button><button id="treeZoomReset" title="Zoom padrão">${Math.round(state.zoom*100)}%</button><button id="treeZoomIn" title="Aumentar zoom">+</button><button id="treeExpand" title="Expandir todos os nós">Expandir todos</button><button id="treeExport" title="Exportar árvore em SVG">Exportar SVG</button></div></div>
+  return `<div class="tree-actions"><strong>Derivação até a etapa ${state.step+1}</strong><div><button id="treeZoomOut" title="Diminuir zoom">−</button><button id="treeZoomReset" title="Zoom padrão">${Math.round(state.zoom*100)}%</button><button id="treeZoomIn" title="Aumentar zoom">+</button>${state.collapsed.size?'<button id="treeExpand" title="Expandir todos os nós">Expandir todos</button>':''}<button id="treeExport" title="Exportar árvore em SVG">Exportar SVG</button></div></div>
     ${built.interrupted?`<p class="tree-caption">${escapeHTML(built.reason)}</p>`:''}
     ${layout.truncated?'<p class="tree-caption">Árvore extensa: alguns nós foram omitidos para preservar o desempenho. Recolha ramos para explorar melhor.</p>':''}
     <div class="tree-canvas" id="treeCanvas">${graphic}</div>
@@ -185,7 +185,7 @@ function renderErrors(){
   if(!state.result)return empty('Sem diagnósticos','Execute uma análise primeiro.');
   const errors=errorsList();if(!errors.length)return '<div class="healthy">✓ Nenhum erro encontrado na análise léxica ou sintática.</div>';
   return `<div class="error-nav"><strong>${errors.length} diagnóstico${errors.length===1?'':'s'}</strong><div><button type="button" class="small-button" id="prevError" title="Erro anterior">◀ Anterior</button> <button type="button" class="small-button" id="nextError" title="Próximo erro">Próximo ▶</button></div></div>
-    ${errors.map((e,i)=>`<div class="problem" data-error="${i}"><strong>${escapeHTML(e.kind)} · Linha ${e.linha}, coluna ${e.coluna}</strong><p>${escapeHTML(e.mensagem)}</p><button type="button" data-error="${i}">Ver no código</button></div>`).join('')}`;
+    ${errors.map((e,i)=>`<div class="problem" data-error="${i}" role="button" tabindex="0" title="Abrir no editor"><strong>${escapeHTML(e.kind)} · Linha ${e.linha}, coluna ${e.coluna}</strong><p>${escapeHTML(e.mensagem)}</p></div>`).join('')}`;
 }
 function renderGrammar(){
   const g=state.grammar;if(!g)return empty('Carregando a gramática...');
@@ -197,7 +197,7 @@ function renderGrammar(){
   else content=`<div class="state-lines">${g.states[selected].map(([pid,dot])=>{const prod=p[pid],parts=[...prod.rhs];parts.splice(dot,0,'•');return escapeHTML(`[${pid}] ${prod.lhs} → ${parts.join(' ')}`);}).join('\n')}</div><div class="section-label">Transições LR(0)</div><div class="transition-list">${Object.entries(g.transitions[selected]||{}).map(([term,to])=>`<button type="button" data-state="${to}">${escapeHTML(term)} → q${to}</button>`).join('')||'Nenhuma transição'}</div>`;
   return `<p class="hint">${g.productions.length} produções · ${g.states.length} estados LR(0) · SLR(1) sem conflitos.</p>
   <div class="tab-buttons">${[['states','Estados LR(0)'],['table','ACTION / GOTO'],['sets','FIRST / FOLLOW'],['rules','Produções']].map(([key,title])=>`<button type="button" data-grammar="${key}" class="${state.grammarTab===key?'active':''}">${title}</button>`).join('')}</div>
-  ${['states','table'].includes(state.grammarTab)?`<div class="state-tools"><label for="stateSelect">Estado</label><select id="stateSelect">${g.states.map((_,i)=>`<option value="${i}" ${i===selected?'selected':''}>q${i}</option>`).join('')}</select><button class="small-button" type="button" id="btnCurrentState">Acompanhar estado atual</button></div>`:''}${content}`;
+  ${['states','table'].includes(state.grammarTab)?`<div class="state-tools"><label for="stateSelect">Estado</label><select id="stateSelect">${g.states.map((_,i)=>`<option value="${i}" ${i===selected?'selected':''}>q${i}</option>`).join('')}</select>${state.followState?'':'<button class="small-button" type="button" id="btnCurrentState">Voltar ao estado atual</button>'}</div>`:''}${content}`;
 }
 function renderStatic(){
   $$('.analysis-tabs button[data-static-tab]').forEach(b=>{const active=b.dataset.staticTab===state.staticTab;b.classList.toggle('active',active);b.setAttribute('aria-selected',active?'true':'false');});
@@ -214,7 +214,7 @@ function jumpToCode(line,col=1,length=1){
 function saveReport(){
   if(!state.result){toast('Analise o código antes de exportar.');return;}
   const r=state.result;
-  const lines=[`MiniPascal Studio v5.2.0 — ${state.fileName}`,`ESTADOS=${r.estados}`,`ACEITO=${r.aceito}`];
+  const lines=[`MiniPascal v5.3.0 — ${state.fileName}`,`ESTADOS=${r.estados}`,`ACEITO=${r.aceito}`];
   r.tokens.forEach(t=>lines.push(`TOK=<${t.lexema}, ${t.descricao}> [linha ${t.linha}, coluna ${t.coluna}]`));
   r.errosLexicos.forEach(e=>lines.push(`LEX=Linha ${e.linha}, coluna ${e.coluna}: ${e.mensagem}`));
   r.errosSintaticos.forEach(e=>lines.push(`SYN=Linha ${e.linha}, coluna ${e.coluna}: ${e.mensagem}`));
@@ -256,7 +256,7 @@ async function closeRequest(){
 }
 function updatePanel(data){
   if(!data||typeof data!=='object')return;state.update=data;
-  $('#updateVersion').textContent='v'+String(data.version||'5.2.0');
+  $('#updateVersion').textContent='v'+String(data.version||'5.3.0');
   $('#updateMessage').textContent=String(data.message||'');
   const p=Number(data.progress);
   $('#updateProgressWrap').hidden=!(data.status==='downloading'&&Number.isFinite(p));
@@ -300,7 +300,6 @@ function bindUI(){
   $('#btnPlay').addEventListener('click',play);
   $('#stepRange').addEventListener('input',e=>{pause();setStep(Number(e.target.value));});
   $('#speed').addEventListener('change',e=>{const playing=state.playing;pause();state.speed=Number(e.target.value);savePreferences();if(playing)play();});
-  $('#btnPresentation').addEventListener('click',()=>{document.body.classList.toggle('presentation');$('#btnPresentation').textContent=document.body.classList.contains('presentation')?'Sair da apresentação':'Modo apresentação';});
   $$('[data-dynamic-tab]').forEach(b=>b.addEventListener('click',()=>{state.dynamicTab=b.dataset.dynamicTab;renderDynamic();}));
   $$('[data-static-tab]').forEach(b=>b.addEventListener('click',()=>{state.staticTab=b.dataset.staticTab;renderStatic();}));
   $('#staticContent').addEventListener('click',event=>{
@@ -312,6 +311,7 @@ function bindUI(){
     const q=event.target.closest('[data-state]');if(q){state.inspectState=Number(q.dataset.state);state.followState=false;renderStatic();return;}
     if(event.target.closest('#btnCurrentState')){state.followState=true;state.inspectState=state.result?.passos[state.step]?.detalhes.estado||0;renderStatic();}
   });
+  $('#staticContent').addEventListener('keydown',event=>{if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-error]')){event.preventDefault();event.target.click();}});
   $('#staticContent').addEventListener('change',event=>{if(event.target.id==='stateSelect'){state.inspectState=Number(event.target.value);state.followState=false;renderStatic();}});
   $('#dynamicContent').addEventListener('click',event=>{
     if(event.target.closest('#treeZoomOut')){state.zoom=Math.max(.5,state.zoom-.15);renderDynamic();return;}
