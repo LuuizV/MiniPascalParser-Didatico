@@ -6,7 +6,7 @@
 
 **Análise léxica · Análise sintática SLR(1) · Simulação interativa**
 
-[![Versão](https://img.shields.io/badge/versão-5.3.0-8b7cf6?style=for-the-badge)](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest)
+[![Versão](https://img.shields.io/badge/versão-5.4.0-8b7cf6?style=for-the-badge)](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest)
 [![Electron](https://img.shields.io/badge/Electron-45-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![Node.js](https://img.shields.io/badge/JavaScript-Node.js-358A58?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![Windows](https://img.shields.io/badge/Windows-x64-1570CC?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest)
@@ -20,17 +20,16 @@
 
 ---
 
-## Novidades da v5.3.0
+## Novidades da v5.4.0
 
-- **Editor maior e contextual:** Novo texto, Importar arquivo e Salvar na aba Código; seletor de exemplos recolhível.
-- **Análise dinâmica sincronizada:** linha do tempo, código da linha atual, cartão didático e simulador.
-- **Árvore gráfica:** conexões reais em SVG, zoom, expansão, recolhimento e exportação.
-- **Dados estáticos:** tokens, gramática e diagnósticos organizados em um mesmo ambiente.
-- **Mais legibilidade:** fontes ampliadas, escala global persistente, ações sem duplicidade e identidade visual unificada.
-- **Mais segurança para o trabalho:** proteção ao fechar com edições pendentes e análise isolada em Worker Thread.
-- **Regressão preservada:** 71 produções, 130 estados LR(0), 611 passos de referência.
+- **Interface estável e legível:** controles A−/A+ de escala global e fonte removidos; fontes e tamanhos padrão equilibrados, com layout responsivo sem zoom que deforme componentes.
+- **Quatro áreas simples:** Código, Análise dinâmica (com simulador integrado), Árvore de derivação e Dados estáticos.
+- **Árvore com navegação livre:** arraste com mouse, zoom pela roda no ponto do cursor, enquadramento, ramos recolhíveis e exportação SVG; abre com uma visão geral do resultado quando a linha do tempo ainda não foi explorada.
+- **Gramática simplificada:** somente a lista das 71 produções; FIRST/FOLLOW, LR(0), ACTION/GOTO permanecem no núcleo SLR(1), sem interface própria.
+- **Código mais bem explicado:** comentários extensos no Lexer, geração das tabelas SLR(1), execução do Parser, recuperação de erros, Worker Thread e construção da árvore.
+- **Regressão preservada:** nenhuma alteração na gramática Mini_Pascal ou nas decisões do Parser. **A implementação da Sigma solicitada no enunciado permanece pendente.**
 
-Consulte o [Plano de entrega v5.3.0](docs/PLANO-MESTRE-v5.3.0.md) e o [Guia de uso atualizado](docs/GUIA-DE-USO.md).
+Consulte o [Plano Mestre v5.4.0](docs/PLANO-MESTRE-v5.4.0.md), o [guia do algoritmo SLR(1)](docs/COMENTARIOS-ALGORITMO.md) e o [Guia de uso](docs/GUIA-DE-USO.md).
 
 ## Sobre o projeto
 
@@ -47,9 +46,8 @@ A diferença é que o estudante pode **enxergar o processo acontecendo**: acompa
 | **Editor de código** | Destaque de sintaxe, numeração de linhas, arquivos `.pas` e atalhos. |
 | **Lexer** | Lexema, classificação, terminal correspondente, linha e coluna. |
 | **Simulador SLR(1)** | Execução passo a passo, entrada restante, pilha e ações de análise. |
-| **Tabela ACTION/GOTO** | Transições e reduções usadas pelos estados do Parser. |
-| **Gramática** | Produções, conjuntos FIRST/FOLLOW e estados LR(0). |
-| **Árvore de derivação** | Estrutura concreta construída com as reduções realizadas. |
+| **Gramática** | Lista das 71 produções da linguagem implementada. |
+| **Árvore de derivação** | Aba própria com navegação por arraste, zoom, recolhimento e exportação SVG. |
 | **Diagnósticos** | Erros léxicos e sintáticos, posição e navegação até o código. |
 | **Atualizações** | Consulta às Releases oficiais; instalador NSIS atualizável com confirmação. |
 
@@ -104,7 +102,7 @@ A implementação atual possui **71 produções**, **130 estados LR(0)** e mant�
 
 ## Plano Mestre entre atualizações
 
-Antes de cada versão, aplicamos o [Plano Mestre de Atualizações](docs/PLANO-MESTRE.md): diagnóstico, correções prioritárias, testes, Release validada e registro das limitações. Releases só ficam visíveis após o manifesto e instaladores estarem presentes. **Regra permanente:** cada pacote de atualização autorizado será entregue por uma Release oficial, não apenas como commit ou ZIP.
+Antes de cada versão, aplicamos o [Plano Mestre de Atualizações](docs/PLANO-MESTRE.md): diagnóstico, correções prioritárias, testes, Release validada e registro das limitações. Releases só ficam visíveis após o manifesto e instaladores estarem presentes.
 
 ## Atualizações pelas Releases
 
@@ -120,13 +118,14 @@ A partir da **v5.1.0**, o instalador NSIS pode consultar a **Release estável** 
 
 ## Interface de trabalho
 
-O aplicativo possui apenas três áreas, sem banners promocionais ou rodapé de status:
+O aplicativo possui quatro áreas principais, sem controles globais de escala que distorçam a interface:
 
-- **Código:** editor com destaque de sintaxe, seletor recolhido de exemplos, importação TXT, ajuda, salvamento e ajustes de fonte.
-- **Análise dinâmica:** linha do tempo, controles SLR(1), pilha, ações SHIFT/REDUCE e árvore de derivação no mesmo espaço.
-- **Dados estáticos:** tokens, gramática (incluindo FIRST/FOLLOW e ACTION/GOTO) e erros, separados da reprodução.
+- **Código:** editor com destaque de sintaxe, exemplos, importação e salvamento.
+- **Análise dinâmica:** linha do tempo, código atual, explicações e simulador com pilha integrado.
+- **Árvore de derivação:** painel independente que permite arrastar o mapa, aproximar, centralizar e recolher ramos.
+- **Dados estáticos:** tokens, produções da gramática e diagnósticos.
 
-Os atalhos `Ctrl+1`, `Ctrl+2` e `Ctrl+3` abrem essas áreas. O botão **Analisar código** executa a análise e abre o acompanhamento dinâmico.
+Os atalhos `Ctrl+1`, `Ctrl+2`, `Ctrl+3` e `Ctrl+4` abrem essas áreas. O botão **Analisar código** executa a análise e abre o acompanhamento dinâmico.
 
 ## Trabalho acadêmico
 
@@ -146,8 +145,6 @@ Este repositório apresenta uma evolução da atividade prática de análise sin
 
 ```text
 MiniPascalParser-Didatico/
-├── assets/                 # Ícone PNG oficial
-├── scripts/                # Geração de ícone ICO para Windows
 ├── src/
 │   ├── core.cjs              # Lexer, gramática e Parser SLR(1)
 │   ├── grammar.json          # Produções numeradas
@@ -169,7 +166,7 @@ MiniPascalParser-Didatico/
 - O software **reconhece** programas, mas **não os executa** e não gera código de máquina.
 - A gramática atual é **Mini_Pascal**, com diferenças em relação à especificação **Sigma** do enunciado original.
 - A árvore de derivação pode ser **parcial** em programas com erros recuperados.
-- A visualização de estados mostra uma **vizinhança navegável**, não os 130 estados num único desenho.
+- A interface da Gramática exibe **somente as produções**. Estados LR(0), FIRST/FOLLOW e ACTION/GOTO continuam sendo gerados internamente para o funcionamento do SLR(1).
 - Os testes automatizados verificam o núcleo, o histórico de análise e a máquina de estados de atualização. **A instalação real do `.exe` no Windows precisa ser validada após o build da Release.**
 - Os instaladores distribuídos não possuem **assinatura de código**; o Windows SmartScreen pode exibir um aviso. Baixe somente pelas Releases oficiais e confira os hashes quando disponíveis.
 
@@ -180,6 +177,7 @@ MiniPascalParser-Didatico/
 | [Instalação](docs/INSTALACAO.md) | Windows, portable, desenvolvimento, erros comuns. |
 | [Guia de uso](docs/GUIA-DE-USO.md) | Do código à análise passo a passo. |
 | [Arquitetura](docs/ARQUITETURA.md) | Lexer/Parser, IPC, estados e segurança. |
+| [Algoritmo comentado](docs/COMENTARIOS-ALGORITMO.md) | Explicações das etapas e invariantes do SLR(1). |
 | [Atualizações](docs/ATUALIZACOES.md) | Releases, CI, `latest.yml` e atualização NSIS. |
 | [Contexto acadêmico](docs/CONTEXTO-ACADEMICO.md) | Proposta, participantes, limitações e avaliação. |
 | [Histórico de versões](CHANGELOG.md) | Evolução e mudanças relevantes. |

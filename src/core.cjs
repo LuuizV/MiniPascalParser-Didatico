@@ -1,7 +1,19 @@
 'use strict';
-/** Núcleo independente de interface: tradução fiel do Lexer e Parser SLR(1) Java.
- * A gramática e a numeração dos estados são reproduzidas, não pré-definidas.
- * Uso: const {analisar, modelo, lex} = require('./core.cjs').
+/**
+ * NÚCLEO DA LINGUAGEM MINI_PASCAL (sem dependências gráficas)
+ * ---------------------------------------------------------
+ * Pipeline: fonte -> lex() -> tokens -> analisar() -> passos do Parser SLR(1).
+ *
+ * `grammar.json` é a fonte única das produções. A partir dele, buildGrammar()
+ * calcula FIRST, FOLLOW, a coleção canônica LR(0) e as tabelas ACTION/GOTO.
+ * Nenhuma animação inventa reduções: cada passo do simulador vem de `analisar`.
+ *
+ * CONTEXTO ACADÊMICO: esta gramática Mini_Pascal é DIFERENTE da Sigma do
+ * enunciado. Não adicionar boolean, read/write ou restrições da Sigma aqui sem
+ * uma revisão planejada da gramática e dos testes. Os números de referência
+ * (71 regras, 130 estados, 611 ações de regressão) são específicos desta base.
+ *
+ * Uso sem Electron: const {lex, analisar, modelo} = require('./core.cjs').
  */
 const rules = require('./grammar.json');
 const LABEL = Object.freeze({
@@ -16,6 +28,12 @@ const RESERVED = new Set(('ABSOLUTE ARRAY BEGIN CASE CHAR CONST DIV DO DOWTO ELS
 const letter = c => !!c && /[A-Za-z]/.test(c);
 const digit = c => !!c && /[0-9]/.test(c);
 const space = c => !!c && /[ \t\r\n\f]/.test(c);
+/**
+ * Converte a classificação do Lexer no terminal esperado pela tabela SLR.
+ * Identificadores viram ID, números viram NUM; pontuação e palavras reservadas
+ * mantêm sua grafia canônica em minúsculas. `procedure` é uma palavra-chave,
+ * não uma chamada de identificador. `$` é o marcador de fim de entrada.
+ */
 function terminal(token) {
   if(token.tipo==='EOF') return '$';
   if(token.tipo==='IDENTIFICADOR') return token.lexema.toLowerCase()==='procedure'?'procedure':'ID';
@@ -25,12 +43,25 @@ function terminal(token) {
   if(token.tipo==='DESCONHECIDO') return 'DESCONHECIDO';
   return token.lexema.toLowerCase();
 }
+/**
+ * Analisador léxico determinístico de varredura da esquerda para a direita.
+ *
+ * Invariantes:
+ *  - `i` é a posição UTF-16 no código-fonte; linha/coluna começam em 1;
+ *  - CRLF é uma única quebra lógica, assim como LF ou CR isolado;
+ *  - cada token guarda lexema, tipo, linha, coluna e terminal SLR;
+ *  - um token EOF é emitido mesmo quando há erros, para diagnóstico consistente.
+ *
+ * O Lexer não valida a sequência gramatical dos tokens: isso é papel do Parser.
+ * Erros léxicos são acumulados e impedem o início da análise sintática.
+ */
 function lex(source) {
   source = String(source??'');
   let i=0, linha=1, coluna=1;
   const tokens=[], erros=[];
   const ch=(ahead=0)=>source[i+ahead]??'\0';
   const eof=()=>i>=source.length;
+  // A posição avançada inclui o par CRLF como UMA linha, nunca duas.
   const advance=()=>{if(eof()) return; const c=source[i++]; if(c==='\r'){if(ch()==='\n')i++;linha++;coluna=1;} else if(c==='\n'){linha++;coluna=1;}else coluna++;};
   const push=(lexema,tipo,l=linha,c=coluna)=>{const t={lexema,tipo,descricao:LABEL[tipo],linha:l,coluna:c};t.terminal=terminal(t);tokens.push(t);};
   const err=(l,c,lexema,mensagem)=>erros.push({linha:l,coluna:c,lexema,mensagem});
@@ -39,6 +70,8 @@ function lex(source) {
     do{
       repeated=false;
       while(!eof()&&space(ch())){advance();repeated=true;}
+      // Comentários /* ... */ são descartados sem produzir terminais.
+      // Um comentário não encerrado produz diagnóstico na posição inicial.
       if(!eof()&&ch()==='/'&&ch(1)==='*'){
         const l=linha,c=coluna;let comm='';comm+=ch();advance();comm+=ch();advance();let closed=false;
         while(!eof()){if(ch()==='*'&&ch(1)==='/'){comm+='*/';advance();advance();closed=true;break;}comm+=ch();advance();}
@@ -54,6 +87,8 @@ function lex(source) {
       push(s,['and','or','not'].includes(low)?'OPERADOR_LOGICO':low==='mod'?'OPERADOR_ARITMETICO':RESERVED.has(s.toUpperCase())?'PALAVRA_RESERVADA':'IDENTIFICADOR',l,c);
       continue;
     }
+    // Números usam estados explícitos: INT, FRAC, EXP, SIGN e DIGITS.
+    // Isso diferencia expoente incompleto de número real bem formado.
     if(digit(a)){
       let state='INT',tipo='NUMERO_INTEIRO';
       while(!eof()){
@@ -84,6 +119,7 @@ function lex(source) {
       if(eof()&&(state==='EXP'||state==='SIGN')){tipo='DESCONHECIDO';err(l,c,source.slice(start,i),'expoente incompleto em número real');}
       push(source.slice(start,i),tipo,l,c);continue;
     }
+    // Strings usam aspas duplas; quebras de linha encerram um literal inválido.
     if(a==='"'){
       advance();let closed=false;
       while(!eof()){if(ch()==='"'){advance();closed=true;break;}if(ch()==='\r'||ch()==='\n')break;advance();}
@@ -91,6 +127,7 @@ function lex(source) {
       if(!closed)err(l,c,s,eof()?'constante string não terminada antes do fim do arquivo':'constante string não terminada antes do fim da linha');
       push(s,closed?'CONSTANTE_STRING':'DESCONHECIDO',l,c);continue;
     }
+    // Caracteres usam aspas simples e devem conter exatamente 1 caractere.
     if(a==="'"){
       advance();
       if(eof()||ch()==='\r'||ch()==='\n'){
@@ -116,7 +153,22 @@ function lex(source) {
   }
   return {tokens,erros};
 }
-// Construção LR(0) de acordo com a ordenação determinística de Java (TreeSet).
+/**
+ * CONSTRUÇÃO DAS TABELAS SLR(1)
+ * ----------------------------
+ * 1. Cada produção vira (lado esquerdo, lista de símbolos à direita).
+ * 2. FIRST calcula os terminais que podem iniciar cada não-terminal.
+ * 3. `nullable` rastreia não-terminais capazes de produzir ε (cadeia vazia).
+ * 4. FOLLOW calcula os terminais que podem seguir cada não-terminal.
+ * 5. closure() e GOTO geram a coleção canônica de itens LR(0), em ordem
+ *    determinística compatível com a versão Java da atividade.
+ * 6. ACTION decide SHIFT/REDUCE/ACCEPT; GOTO decide o estado após REDUCE.
+ *    Uma colisão inconsistente falha explicitamente, em vez de escolher uma
+ *    operação arbitrária e ensinar um resultado incorreto.
+ *
+ * Importante: FIRST/FOLLOW e ACTION/GOTO continuam NECESSÁRIOS ao algoritmo,
+ * mesmo quando a interface exibe somente as produções da gramática.
+ */
 function buildGrammar(){
   const productions=rules.map(([lhs,rhs],id)=>({id,lhs,rhs:rhs?rhs.split(' '):[]}));
   const nonterminals=new Set(productions.map(p=>p.lhs)),terminals=new Set(['$']);
@@ -124,6 +176,7 @@ function buildGrammar(){
   const byLhs=new Map();for(const p of productions){if(!byLhs.has(p.lhs))byLhs.set(p.lhs,[]);byLhs.get(p.lhs).push(p.id);}
   const first={},nullable=new Set(),follow={};
   for(const nt of nonterminals){first[nt]=new Set();follow[nt]=new Set();}
+  // Ponto fixo de FIRST: repetimos até nenhuma inclusão modificar os conjuntos.
   let changed=true;
   while(changed){changed=false;for(const p of productions){
     if(!p.rhs.length){if(!nullable.has(p.lhs)){nullable.add(p.lhs);changed=true;}continue;}
@@ -134,6 +187,8 @@ function buildGrammar(){
     }
     if(all&&!nullable.has(p.lhs)){nullable.add(p.lhs);changed=true;}
   }}
+  // FOLLOW(S') recebe `$`: apenas a produção aumentada aceita fim de entrada.
+  // As inclusões de FIRST(β) e FOLLOW(A) seguem o algoritmo clássico de GLC.
   follow["S'"].add('$');changed=true;
   while(changed){changed=false;for(const p of productions)for(let i=0;i<p.rhs.length;i++){
     const s=p.rhs[i];if(!nonterminals.has(s))continue;
@@ -145,6 +200,8 @@ function buildGrammar(){
   }}
   const compare=(a,b)=>a[0]-b[0]||a[1]-b[1];
   const key=items=>items.map(x=>x.join(':')).join('|');
+  // closure(I): para A -> α . B β, inclui todos os itens B -> . γ.
+  // Uma chave estável garante que estados iguais não sejam criados duas vezes.
   function closure(base){
     const seen=new Set(),queue=[];
     function add(pair){const k=pair.join(':');if(!seen.has(k)){seen.add(k);queue.push(pair);}}
@@ -169,6 +226,8 @@ function buildGrammar(){
     }
     transitions.push(row);
   }
+  // REDUCE só aparece nos terminais FOLLOW da produção reconhecida.
+  // ACCEPT só aparece na produção artificial S' -> PROG . com `$`.
   const actions=[],gotos=[];
   for(let i=0;i<states.length;i++){
     const row={},gt={};
@@ -189,15 +248,35 @@ function buildGrammar(){
 const modelo=buildGrammar();
 const friendly=s=>s==='ID'?'identificador':s==='NUM'?'número':s==='STR'?'constante string':s==='CHAR_CONST'?'constante caractere':s==='$'?'fim do arquivo':`'${s}'`;
 const stackText=(states,symbols)=>'0'+symbols.map((s,i)=>` ${s} ${states[i+1]}`).join('');
+/**
+ * Simula o autômato SLR(1) para o texto fornecido.
+ *
+ * `st` é a pilha de estados (começa em q0). `sy` é a pilha de símbolos
+ * gramaticais, alinhada com os estados após q0. O par (estado, terminal)
+ * consulta ACTION e executa SHIFT, REDUCE ou ACCEPT.
+ *
+ * O resultado inclui um histórico de fotografias independentes anteriores à ação.
+ * Isso permite navegar para trás e para frente sem executar o Parser novamente.
+ * A árvore gráfica reconstrói as reduções realizadas a partir desses registros.
+ *
+ * Na ocorrência de erro: registra token e terminais esperados, tenta
+ * sincronizar em ;, end, else, . ou fim de entrada e conserva a fotografia da
+ * pilha ANTES de descartar símbolos. Esse mecanismo é recuperação sintática,
+ * não verificação semântica nem interpretação do programa.
+ */
 function analisar(source){
   const lexed=lex(source),tokens=lexed.tokens, errosLexicos=lexed.erros,errosSintaticos=[],passos=[];
   if(errosLexicos.length)return {tokens:tokens.slice(0,-1),errosLexicos,errosSintaticos,passos,aceito:false,estados:modelo.states.length};
   const st=[0],sy=[];let pos=0,aceito=false;
   const remaining=()=>{const limit=Math.min(tokens.length,pos+8);return tokens.slice(pos,limit).map(t=>['ID','NUM','STR','CHAR_CONST'].includes(t.terminal)?t.lexema:t.terminal).join(' ')+(limit<tokens.length?' ...':'');};
+  // Um passo guarda índice do token, estado de consulta, pilhas e decisão.
+  // REDUCE fotografa a pilha antes do GOTO; SHIFT fotografa antes do consumo.
   function trace(kind,acao,dest=-1,prod=-1,goFrom=-1,goTo=-1,restart=-1,popped=0){
     const t=tokens[pos];passos.push({passo:passos.length+1,pilha:stackText(st,sy),entrada:remaining(),acao,
       detalhes:{indiceToken:pos,token:t,terminal:t.terminal,estado:st.at(-1),tipo:kind,destinoShift:dest,producao:prod,origemGoto:goFrom,destinoGoto:goTo,estados:[...st],simbolos:[...sy],indiceRetomada:restart,estadosRemovidos:popped}});
   }
+  // Panic-mode: procurar um terminal conhecido e, se necessário, recuar
+  // estados da pilha até existir uma ação válida para esse terminal.
   const synchronizers=new Set([';','end','else','.','$']);
   function recover(){let j=pos;while(j<tokens.length){const term=tokens[j].terminal;if(modelo.actions[st.at(-1)][term])return j;
     if(synchronizers.has(term)){while(st.length>1&&!modelo.actions[st.at(-1)][term]){st.pop();sy.pop();}if(modelo.actions[st.at(-1)][term])return j;}
@@ -216,6 +295,9 @@ function analisar(source){
       passos.push({passo:passos.length+1,pilha:originalText,entrada:remaining(),acao:`ERRO - ${mensagem}`,detalhes:{indiceToken:pos,token:t,terminal:t.terminal,estado:state,tipo:'ERROR',destinoShift:-1,producao:-1,origemGoto:-1,destinoGoto:-1,estados:originalStates,simbolos:originalSymbols,indiceRetomada:restart,estadosRemovidos:originalStates.length-st.length}});
       if(restart<0)break;pos=restart;continue;
     }
+    // SHIFT: consome um terminal e empilha o estado de destino.
+    // REDUCE: remove |β| estados/símbolos, consulta GOTO(q,A) e empilha A.
+    // ACCEPT: a entrada sintaticamente válida chegou ao marcador `$`.
     if(act.kind==='SHIFT'){trace('SHIFT',`SHIFT para estado ${act.value} com '${friendly(t.terminal)}'`,act.value);sy.push(t.terminal);st.push(act.value);pos++;}
     else if(act.kind==='REDUCE'){
       const p=modelo.productions[act.value],n=p.rhs.length,from=st[st.length-1-n],to=modelo.gotos[from][p.lhs];

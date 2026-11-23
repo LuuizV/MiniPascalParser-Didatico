@@ -1,10 +1,21 @@
 'use strict';
-/** Constrói e desenha a árvore concreta a partir das operações reais SHIFT/REDUCE. */
+/**
+ * Árvore de derivação concreta reconstruída DO HISTÓRICO, não de exemplos fixos.
+ * SHIFT adiciona folhas com lexemas reconhecidos; REDUCE reúne os últimos N
+ * símbolos na pilha de nós e cria um nó do não-terminal produzido. ε cria
+ * uma folha explícita para que uma redução vazia também seja compreensível.
+ *
+ * Esta é uma representação de derivação, não o autômato de estados LR(0).
+ * A geometria é calculada isoladamente do navegador para facilitar testes.
+ */
 (function(root,factory){
   const api=factory();
   if(typeof module==='object'&&module.exports)module.exports=api;
   root.MiniPascalTree=api;
 })(typeof globalThis!=='undefined'?globalThis:this,()=>{
+  /** Executa um replay parcial das operações até a etapa inclusiva.
+   * Em caso de erro, sinaliza interrupção: nunca desenhar como íntegra uma
+   * árvore obtida após recuperar parcialmente a pilha. */
   function build(steps,productions,index){
     const stack=[];let interrupted=false,reason='',id=0;
     for(let i=0;i<=index&&i<steps.length;i++){
@@ -21,6 +32,10 @@
     }
     return {roots:stack,interrupted,reason};
   }
+  /** Layout hierárquico horizontal. Primeiro mede a largura de subárvores,
+   * depois posiciona pais sobre seus filhos e calcula curvas de conexão.
+   * O limite de nós protege o renderer de grafos enormes; a navegação por
+   * arraste/zoom acontece fora deste módulo e não modifica as coordenadas. */
   function layout(roots,collapsed=new Set(),maxVisible=360){
     const NODE_W=148,NODE_H=48,GAP_X=24,GAP_Y=75,PADDING=28;
     let count=0,maxDepth=0,truncated=false;

@@ -1,5 +1,9 @@
 'use strict';
-/** Controlador de interface. A análise é realizada em Worker Thread pelo núcleo SLR(1). */
+/**
+ * Controlador da interface didática. O Renderer não toma decisões gramaticais:
+ * ele apenas exibe a saída estruturada do Lexer/Parser produzida na Worker Thread.
+ * A etapa corrente é compartilhada pelo simulador e pela árvore, mesmo em abas distintas.
+ */
 const $=selector=>document.querySelector(selector);
 const $$=selector=>Array.from(document.querySelectorAll(selector));
 const {escapeHTML,offsetAt,sourceLine,actionInfo}=window.MiniPascalUI;
@@ -15,10 +19,10 @@ end.`;
 const input=$('#codeInput');
 input.value=sample;
 const state={
-  result:null,grammar:null,step:0,mode:'code',dynamicTab:'simulator',staticTab:'tokens',
-  fileName:'exemplo.pas',filePath:null,dirty:false,font:16,scale:1,speed:700,
-  playing:false,interval:null,selectedToken:-1,grammarTab:'states',inspectState:0,followState:true,
-  selectedError:0,zoom:1,collapsed:new Set(),manualFocus:null,examples:[],sourceVersion:0,analyzing:false,update:null
+  result:null,grammar:null,step:0,mode:'code',staticTab:'tokens',
+  fileName:'exemplo.pas',filePath:null,dirty:false,speed:700,
+  playing:false,interval:null,selectedToken:-1,
+  selectedError:0,timelineTouched:false,treeInitiallyOpened:false,zoom:1,treePan:{x:0,y:0},treeGeometry:null,collapsed:new Set(),manualFocus:null,examples:[],sourceVersion:0,analyzing:false,update:null
 };
 function toast(message){const el=$('#toast');el.textContent=String(message);el.classList.add('visible');clearTimeout(toast.timeout);toast.timeout=setTimeout(()=>el.classList.remove('visible'),3800);}
 function status(message){$('#statusText').textContent=message;}
@@ -59,22 +63,37 @@ function changeSource(content,name,markDirty=true){
   input.value=content;state.fileName=name||'novo.pas';state.filePath=null;
   $('#selectedExample').textContent=state.fileName;invalidate();setDirty(markDirty);refreshEditor();
 }
-function applyPreferences(){
-  document.documentElement.style.setProperty('--ui-scale',String(state.scale));
-  document.documentElement.style.setProperty('--code-font',state.font+'px');
-  $('#speed').value=String(state.speed);
-  refreshEditor();
-}
-function savePreferences(){window.studio?.saveSettings({scale:state.scale,font:state.font,speed:state.speed}).catch(()=>{});}
+// Persistimos apenas a velocidade; zoom e tamanho de fonte globais foram retirados
+// porque deformavam botões, textos da navegação e a área reservada ao código.
+function applyPreferences(){ $('#speed').value=String(state.speed); }
+function savePreferences(){window.studio?.saveSettings({speed:state.speed}).catch(()=>{});}
 function setMode(mode){
-  if(!['code','dynamic','static'].includes(mode))return;
+  if(!['code','dynamic','tree','static'].includes(mode))return;
   state.mode=mode;
   $$('.studio-view').forEach(view=>view.hidden=view.id!==`view-${mode}`);
   $$('.nav-item').forEach(b=>{const active=b.dataset.mode===mode;b.classList.toggle('active',active);active?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current');});
-  $('#viewTitle').textContent={code:'Código',dynamic:'Análise dinâmica',static:'Dados estáticos'}[mode];
+  $('#viewTitle').textContent={code:'Código',dynamic:'Análise dinâmica',tree:'Árvore de derivação',static:'Dados estáticos'}[mode];
   closeExamples();
   if(mode==='dynamic'){updateTimeline();renderDynamic();}
-  if(mode==='static'){if(state.followState)state.inspectState=state.result?.passos[state.step]?.detalhes.estado||state.inspectState;renderStatic();}
+  if(mode==='tree'){
+    // Na primeira abertura após uma análise, começamos pela derivação pronta.
+    // Se o estudante já navegou na linha do tempo, respeitamos sua etapa.
+    const steps=state.result?.passos;
+    if(!state.timelineTouched&&state.result?.aceito&&steps?.length>1)state.step=steps.length-1;
+    if(!state.treeInitiallyOpened&&state.result?.passos?.length>30){
+      // A árvore completa de um programa pode ocupar milhares de pixels.
+      // Exibimos primeiro um resumo hierárquico legível; cada ramo expande por clique.
+      const built=tree.build(state.result.passos,state.grammar?.productions??[],state.step);
+      function fold(node,depth=0){
+        if(depth>=3&&node.children.length){state.collapsed.add(node.id);return;}
+        node.children.forEach(child=>fold(child,depth+1));
+      }
+      built.roots.forEach(root=>fold(root));
+      state.treeInitiallyOpened=true;
+    }
+    renderTreeView();requestAnimationFrame(centerTree);
+  }
+  if(mode==='static')renderStatic();
 }
 function closeExamples(){$('#examplesMenu').hidden=true;$('#btnExamples').setAttribute('aria-expanded','false');}
 function refreshSummary(){
@@ -111,10 +130,12 @@ function updateTimeline(){
   $('#btnPlay').textContent=state.playing?'Ⅱ':'▶';
 }
 function setStep(index){
+  state.timelineTouched=true;
   const steps=state.result?.passos??[];if(!steps.length)return;
   state.step=Math.max(0,Math.min(steps.length-1,index));state.selectedToken=-1;state.manualFocus=null;
-  if(state.followState)state.inspectState=steps[state.step].detalhes.estado;
-  updateTimeline();renderDynamic();refreshEditor();if(state.mode==='static')renderStatic();
+  updateTimeline();renderDynamic();refreshEditor();
+  if(state.mode==='tree')renderTreeView();
+  if(state.mode==='static')renderStatic();
 }
 function play(){
   if(state.playing){pause();return;}
@@ -130,10 +151,10 @@ async function runAnalysis(){
   try{
     const result=await window.studio.analyze(currentSource);
     if(version!==state.sourceVersion){toast('O código foi editado: o resultado anterior foi descartado.');return;}
-    state.result=result;state.step=0;state.selectedToken=-1;state.manualFocus=null;state.selectedError=0;state.collapsed.clear();state.followState=true;
-    refreshSummary();updateTimeline();renderDynamic();renderStatic();refreshEditor();
+    state.result=result;state.step=0;state.selectedToken=-1;state.manualFocus=null;state.selectedError=0;state.timelineTouched=false;state.treeInitiallyOpened=false;state.collapsed.clear();state.zoom=1;state.treePan={x:0,y:0};
+    refreshSummary();updateTimeline();renderDynamic();renderStatic();renderTreeView();refreshEditor();
     if(result.errosLexicos.length){state.staticTab='errors';setMode('static');}
-    else{state.dynamicTab='simulator';setMode('dynamic');}
+    else setMode('dynamic');
     status(result.aceito?'Programa aceito sintaticamente':`Análise terminou com ${result.errosLexicos.length+result.errosSintaticos.length} erros.`);
   }catch(error){toast('Não foi possível analisar: '+String(error?.message||error));status('Análise interrompida');}
   finally{state.analyzing=false;$('#btnRun').disabled=false;$('#btnRun').innerHTML='<span aria-hidden="true">▶</span> Analisar código';}
@@ -155,25 +176,55 @@ function renderSimulator(){
   <div class="section-label">Próximos símbolos</div><div class="code-box">${escapeHTML(trace.entrada)}</div>
   <p class="hint">A pilha representa o estado imediatamente anterior à ação. A árvore representa as reduções aplicadas até a etapa selecionada.</p>`;
 }
-function renderTree(){
-  const r=state.result,g=state.grammar;if(!r?.passos.length||!g)return empty('Árvore ainda não construída','Execute a análise e avance pelas reduções.');
-  const built=tree.build(r.passos,g.productions,state.step),layout=tree.layout(built.roots,state.collapsed,360);
-  const nodeW=148,nodeH=48;
+/**
+ * Renderização da árvore em sua própria tela. A pilha de nós é reconstruída do
+ * histórico SHIFT/REDUCE. A geometria é independente de zoom e movimento.
+ * A rolagem do mouse atua sobre o cursor; arrastar move apenas o plano visual.
+ */
+function renderTreeView(){
+  const world=$('#treeWorld'),status=$('#treeStatus'),r=state.result,g=state.grammar;
+  if(!r?.passos.length||!g){
+    world.innerHTML='<div class="tree-placeholder">Analise um código para construir a árvore.</div>';
+    state.treeGeometry=null;status.textContent='Nenhuma derivação disponível.';
+    $('#treeExport').disabled=true;$('#treeCenter').disabled=true;$('#treeExpand').hidden=true;return;
+  }
+  const built=tree.build(r.passos,g.productions,state.step),layout=tree.layout(built.roots,state.collapsed,420);
+  state.treeGeometry={width:layout.width,height:layout.height};
   const edges=layout.edges.map(e=>`<path class="tree-edge" d="M${e.x1} ${e.y1} C${e.x1} ${e.y1+25} ${e.x2} ${e.y2-25} ${e.x2} ${e.y2}"/>`).join('');
   const nodes=layout.nodes.map(n=>{
     const label=n.label.length>17?n.label.slice(0,16)+'…':n.label;
-    return `<g class="tree-node-svg ${n.terminal?'terminal':''}" data-node="${n.id}" role="button" tabindex="0" aria-label="${escapeHTML(n.label)}" transform="translate(${n.x},${n.y})"><title>${escapeHTML(n.label)}${n.production?' — Produção '+n.production.id:''}</title><rect width="${nodeW}" height="${nodeH}" rx="9"/><text x="${nodeW/2}" y="${nodeH/2+5}" text-anchor="middle">${escapeHTML(label)}</text>${n.hasChildren?`<text x="137" y="15" text-anchor="end" style="font-size:13px">${n.collapsed?'+':'−'}</text>`:''}</g>`;
+    return `<g class="tree-node-svg ${n.terminal?'terminal':''}" data-node="${n.id}" role="button" tabindex="0" aria-label="${escapeHTML(n.label)}" transform="translate(${n.x},${n.y})"><title>${escapeHTML(n.label)}${n.production?' — Produção '+n.production.id:''}</title><rect width="148" height="48" rx="9"/><text x="74" y="29" text-anchor="middle">${escapeHTML(label)}</text>${n.hasChildren?`<text x="137" y="15" text-anchor="end" style="font-size:13px">${n.collapsed?'+':'−'}</text>`:''}</g>`;
   }).join('');
-  const graphic=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${layout.width} ${layout.height}" width="${Math.round(layout.width*state.zoom)}" height="${Math.round(layout.height*state.zoom)}" aria-label="Árvore gráfica de derivação">${edges}${nodes}</svg>`;
-  return `<div class="tree-actions"><strong>Derivação até a etapa ${state.step+1}</strong><div><button id="treeZoomOut" title="Diminuir zoom">−</button><button id="treeZoomReset" title="Zoom padrão">${Math.round(state.zoom*100)}%</button><button id="treeZoomIn" title="Aumentar zoom">+</button>${state.collapsed.size?'<button id="treeExpand" title="Expandir todos os nós">Expandir todos</button>':''}<button id="treeExport" title="Exportar árvore em SVG">Exportar SVG</button></div></div>
-    ${built.interrupted?`<p class="tree-caption">${escapeHTML(built.reason)}</p>`:''}
-    ${layout.truncated?'<p class="tree-caption">Árvore extensa: alguns nós foram omitidos para preservar o desempenho. Recolha ramos para explorar melhor.</p>':''}
-    <div class="tree-canvas" id="treeCanvas">${graphic}</div>
-    <p class="tree-caption">Clique nos nós para recolher ou expandir ramos. SHIFT cria folhas; REDUCE agrupa os símbolos reconhecidos.</p>`;
+  world.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${layout.width} ${layout.height}" width="${layout.width}" height="${layout.height}" aria-label="Árvore de derivação">${edges}${nodes}</svg>`;
+  world.style.width=layout.width+'px';world.style.height=layout.height+'px';
+  status.textContent=`Etapa ${state.step+1} de ${r.passos.length}${built.interrupted?' · Parcial após erro':''}${layout.truncated?' · Parte dos nós ocultada por desempenho':''}`;
+  if(built.interrupted&&built.reason)status.title=built.reason;
+  $('#treeExport').disabled=false;$('#treeCenter').disabled=false;$('#treeExpand').hidden=state.collapsed.size===0;
+  applyTreeTransform();
+}
+function applyTreeTransform(){
+  const el=$('#treeWorld');
+  el.style.transform=`translate(${state.treePan.x}px,${state.treePan.y}px) scale(${state.zoom})`;
+  $('#treeZoomLevel').textContent=Math.round(state.zoom*100)+'%';
+}
+function centerTree(){
+  const viewport=$('#treeViewport'),size=state.treeGeometry;if(!size)return;
+  const w=viewport.clientWidth,h=viewport.clientHeight;if(!w||!h)return;
+  state.zoom=Math.max(.3,Math.min(1.15,(w-85)/size.width,(h-85)/size.height));
+  state.treePan={x:Math.round((w-size.width*state.zoom)/2),y:Math.round((h-size.height*state.zoom)/2)};
+  applyTreeTransform();
+}
+function zoomTree(factor,x,y){
+  const vp=$('#treeViewport');if(!state.treeGeometry)return;
+  const centerX=x??vp.clientWidth/2,centerY=y??vp.clientHeight/2;
+  const previous=state.zoom,next=Math.max(.3,Math.min(2.7,previous*factor));const ratio=next/previous;
+  state.treePan.x=centerX-(centerX-state.treePan.x)*ratio;
+  state.treePan.y=centerY-(centerY-state.treePan.y)*ratio;
+  state.zoom=next;applyTreeTransform();
 }
 function renderDynamic(){
-  $$('.analysis-tabs button[data-dynamic-tab]').forEach(b=>{const active=b.dataset.dynamicTab===state.dynamicTab;b.classList.toggle('active',active);b.setAttribute('aria-selected',active?'true':'false');});
-  $('#dynamicContent').innerHTML=state.dynamicTab==='tree'?renderTree():renderSimulator();
+  // Sem subabas: a simulação é o corpo permanente da Análise dinâmica.
+  $('#dynamicContent').innerHTML=renderSimulator();
 }
 function renderTokens(){
   const tokens=state.result?.tokens??[];
@@ -187,17 +238,15 @@ function renderErrors(){
   return `<div class="error-nav"><strong>${errors.length} diagnóstico${errors.length===1?'':'s'}</strong><div><button type="button" class="small-button" id="prevError" title="Erro anterior">◀ Anterior</button> <button type="button" class="small-button" id="nextError" title="Próximo erro">Próximo ▶</button></div></div>
     ${errors.map((e,i)=>`<div class="problem" data-error="${i}" role="button" tabindex="0" title="Abrir no editor"><strong>${escapeHTML(e.kind)} · Linha ${e.linha}, coluna ${e.coluna}</strong><p>${escapeHTML(e.mensagem)}</p></div>`).join('')}`;
 }
+/**
+ * Exibimos apenas as produções na consulta estática. FIRST/FOLLOW, estados LR(0)
+ * e tabelas ACTION/GOTO permanecem calculados no núcleo para preservar SLR(1).
+ */
 function renderGrammar(){
-  const g=state.grammar;if(!g)return empty('Carregando a gramática...');
-  const selected=Math.max(0,Math.min(g.states.length-1,state.inspectState)),p=g.productions;
-  let content='';
-  if(state.grammarTab==='rules')content=`<div class="table-scroll"><table class="data-table"><thead><tr><th>Regra</th><th>Produção</th></tr></thead><tbody>${p.map(a=>`<tr><td>${a.id}</td><td class="mono">${escapeHTML(a.lhs)} → ${escapeHTML(a.rhs.join(' ')||'ε')}</td></tr>`).join('')}</tbody></table></div>`;
-  else if(state.grammarTab==='sets')content=`<div class="table-scroll"><table class="data-table"><thead><tr><th>Não terminal</th><th>FIRST</th><th>FOLLOW</th></tr></thead><tbody>${g.nonterminals.map(nt=>`<tr><td class="mono">${escapeHTML(nt)}</td><td>${escapeHTML((g.first[nt]||[]).join(', '))}</td><td>${escapeHTML((g.follow[nt]||[]).join(', '))}</td></tr>`).join('')}</tbody></table></div>`;
-  else if(state.grammarTab==='table')content=`<div class="table-scroll"><table class="data-table"><thead><tr><th>Terminal</th><th>ACTION[q${selected}]</th></tr></thead><tbody>${Object.entries(g.actions[selected]||{}).map(([term,a])=>`<tr class="${state.result?.passos[state.step]?.detalhes.terminal===term?'selected':''}"><td>${escapeHTML(term)}</td><td>${escapeHTML(a.kind==='SHIFT'?'SHIFT q'+a.value:a.kind==='REDUCE'?'REDUCE '+a.value:'ACCEPT')}</td></tr>`).join('')}</tbody></table></div><div class="section-label">GOTO</div><div class="stack-chips">${Object.entries(g.gotos[selected]||{}).map(([term,to])=>`<span class="chip">${escapeHTML(term)} → q${to}</span>`).join('')||'Sem transições GOTO'}</div>`;
-  else content=`<div class="state-lines">${g.states[selected].map(([pid,dot])=>{const prod=p[pid],parts=[...prod.rhs];parts.splice(dot,0,'•');return escapeHTML(`[${pid}] ${prod.lhs} → ${parts.join(' ')}`);}).join('\n')}</div><div class="section-label">Transições LR(0)</div><div class="transition-list">${Object.entries(g.transitions[selected]||{}).map(([term,to])=>`<button type="button" data-state="${to}">${escapeHTML(term)} → q${to}</button>`).join('')||'Nenhuma transição'}</div>`;
-  return `<p class="hint">${g.productions.length} produções · ${g.states.length} estados LR(0) · SLR(1) sem conflitos.</p>
-  <div class="tab-buttons">${[['states','Estados LR(0)'],['table','ACTION / GOTO'],['sets','FIRST / FOLLOW'],['rules','Produções']].map(([key,title])=>`<button type="button" data-grammar="${key}" class="${state.grammarTab===key?'active':''}">${title}</button>`).join('')}</div>
-  ${['states','table'].includes(state.grammarTab)?`<div class="state-tools"><label for="stateSelect">Estado</label><select id="stateSelect">${g.states.map((_,i)=>`<option value="${i}" ${i===selected?'selected':''}>q${i}</option>`).join('')}</select>${state.followState?'':'<button class="small-button" type="button" id="btnCurrentState">Voltar ao estado atual</button>'}</div>`:''}${content}`;
+  const productions=state.grammar?.productions;
+  if(!productions)return empty('Carregando as produções...');
+  return `<div class="grammar-heading"><strong>${productions.length} produções da gramática Mini_Pascal</strong><span>Regras utilizadas pelo Parser</span></div>
+    <div class="table-scroll grammar-table"><table class="data-table"><thead><tr><th scope="col">Nº</th><th scope="col">Produção</th></tr></thead><tbody>${productions.map(p=>`<tr><td class="mono">${p.id}</td><td class="mono">${escapeHTML(p.lhs)} → ${escapeHTML(p.rhs.join(' ')||'ε')}</td></tr>`).join('')}</tbody></table></div>`;
 }
 function renderStatic(){
   $$('.analysis-tabs button[data-static-tab]').forEach(b=>{const active=b.dataset.staticTab===state.staticTab;b.classList.toggle('active',active);b.setAttribute('aria-selected',active?'true':'false');});
@@ -214,7 +263,7 @@ function jumpToCode(line,col=1,length=1){
 function saveReport(){
   if(!state.result){toast('Analise o código antes de exportar.');return;}
   const r=state.result;
-  const lines=[`MiniPascal v5.3.0 — ${state.fileName}`,`ESTADOS=${r.estados}`,`ACEITO=${r.aceito}`];
+  const lines=[`MiniPascal v5.4.0 — ${state.fileName}`,`ESTADOS=${r.estados}`,`ACEITO=${r.aceito}`];
   r.tokens.forEach(t=>lines.push(`TOK=<${t.lexema}, ${t.descricao}> [linha ${t.linha}, coluna ${t.coluna}]`));
   r.errosLexicos.forEach(e=>lines.push(`LEX=Linha ${e.linha}, coluna ${e.coluna}: ${e.mensagem}`));
   r.errosSintaticos.forEach(e=>lines.push(`SYN=Linha ${e.linha}, coluna ${e.coluna}: ${e.mensagem}`));
@@ -256,7 +305,7 @@ async function closeRequest(){
 }
 function updatePanel(data){
   if(!data||typeof data!=='object')return;state.update=data;
-  $('#updateVersion').textContent='v'+String(data.version||'5.3.0');
+  $('#updateVersion').textContent='v'+String(data.version||'5.4.0');
   $('#updateMessage').textContent=String(data.message||'');
   const p=Number(data.progress);
   $('#updateProgressWrap').hidden=!(data.status==='downloading'&&Number.isFinite(p));
@@ -272,7 +321,7 @@ async function handleUpdate(){
     if(!data?.canAutoUpdate){await window.studio.openReleases();return;}
     if(data.status==='available'){await window.studio.downloadUpdate();return;}
     if(data.status==='downloaded'){
-      if(!window.confirm('Instalar a nova versão e reiniciar o MiniPascal Studio?'))return;
+      if(!window.confirm('Instalar a nova versão e reiniciar o MiniPascal?'))return;
       if(state.dirty&&!(await saveFile())){toast('Salve o código antes de instalar.');return;}
       await window.studio.installUpdate();return;
     }
@@ -288,11 +337,7 @@ function bindUI(){
   $('#examples').addEventListener('click',event=>{const el=event.target.closest('[data-example]');if(el)openExample(el);});
   $('#btnNew').addEventListener('click',newFile);$('#btnImport').addEventListener('click',openFile);
   $('#btnSave').addEventListener('click',()=>saveFile());$('#btnExport').addEventListener('click',saveReport);
-  $('#btnHelp').addEventListener('click',()=>{state.staticTab='grammar';state.grammarTab='rules';setMode('static');});
-  $('#btnFontPlus').addEventListener('click',()=>{state.font=Math.min(23,state.font+1);applyPreferences();savePreferences();});
-  $('#btnFontMinus').addEventListener('click',()=>{state.font=Math.max(13,state.font-1);applyPreferences();savePreferences();});
-  $('#btnScalePlus').addEventListener('click',()=>{state.scale=Math.min(1.5,Math.round((state.scale+.1)*10)/10);applyPreferences();savePreferences();});
-  $('#btnScaleMinus').addEventListener('click',()=>{state.scale=Math.max(.9,Math.round((state.scale-.1)*10)/10);applyPreferences();savePreferences();});
+  $('#btnHelp').addEventListener('click',()=>{state.staticTab='grammar';setMode('static');});
   $('#btnFirst').addEventListener('click',()=>{pause();setStep(0);});
   $('#btnLast').addEventListener('click',()=>{pause();setStep((state.result?.passos.length||1)-1);});
   $('#btnPrev').addEventListener('click',()=>{pause();setStep(state.step-1);});
@@ -300,28 +345,68 @@ function bindUI(){
   $('#btnPlay').addEventListener('click',play);
   $('#stepRange').addEventListener('input',e=>{pause();setStep(Number(e.target.value));});
   $('#speed').addEventListener('change',e=>{const playing=state.playing;pause();state.speed=Number(e.target.value);savePreferences();if(playing)play();});
-  $$('[data-dynamic-tab]').forEach(b=>b.addEventListener('click',()=>{state.dynamicTab=b.dataset.dynamicTab;renderDynamic();}));
   $$('[data-static-tab]').forEach(b=>b.addEventListener('click',()=>{state.staticTab=b.dataset.staticTab;renderStatic();}));
   $('#staticContent').addEventListener('click',event=>{
     const t=event.target.closest('[data-token]');if(t&&state.result){const token=state.result.tokens[Number(t.dataset.token)];jumpToCode(token.linha,token.coluna,token.lexema.length);return;}
     const e=event.target.closest('[data-error]');if(e){const list=errorsList();state.selectedError=Number(e.dataset.error);const item=list[state.selectedError];if(item)jumpToCode(item.linha,item.coluna,item.lexema?.length||item.encontrado?.length||1);return;}
     if(event.target.closest('#nextError')){const list=errorsList();if(list.length){state.selectedError=(state.selectedError+1)%list.length;const e=list[state.selectedError];jumpToCode(e.linha,e.coluna,e.lexema?.length||1);}return;}
     if(event.target.closest('#prevError')){const list=errorsList();if(list.length){state.selectedError=(state.selectedError-1+list.length)%list.length;const e=list[state.selectedError];jumpToCode(e.linha,e.coluna,e.lexema?.length||1);}return;}
-    const g=event.target.closest('[data-grammar]');if(g){state.grammarTab=g.dataset.grammar;renderStatic();return;}
-    const q=event.target.closest('[data-state]');if(q){state.inspectState=Number(q.dataset.state);state.followState=false;renderStatic();return;}
-    if(event.target.closest('#btnCurrentState')){state.followState=true;state.inspectState=state.result?.passos[state.step]?.detalhes.estado||0;renderStatic();}
   });
   $('#staticContent').addEventListener('keydown',event=>{if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-error]')){event.preventDefault();event.target.click();}});
-  $('#staticContent').addEventListener('change',event=>{if(event.target.id==='stateSelect'){state.inspectState=Number(event.target.value);state.followState=false;renderStatic();}});
-  $('#dynamicContent').addEventListener('click',event=>{
-    if(event.target.closest('#treeZoomOut')){state.zoom=Math.max(.5,state.zoom-.15);renderDynamic();return;}
-    if(event.target.closest('#treeZoomIn')){state.zoom=Math.min(2.25,state.zoom+.15);renderDynamic();return;}
-    if(event.target.closest('#treeZoomReset')){state.zoom=1;renderDynamic();return;}
-    if(event.target.closest('#treeExpand')){state.collapsed.clear();renderDynamic();return;}
-    if(event.target.closest('#treeExport')){const svg=$('#treeCanvas svg');if(svg)window.studio?.exportTree(svg.outerHTML).then(ok=>{if(ok)toast('Árvore SVG exportada.');}).catch(e=>toast(e.message));return;}
-    const node=event.target.closest('[data-node]');if(node){const id=Number(node.dataset.node);state.collapsed.has(id)?state.collapsed.delete(id):state.collapsed.add(id);renderDynamic();}
+  // A árvore é um mapa manipulável: somente o fundo inicia arraste.
+  // Clique no nó preserva o comportamento de recolher/expandir a derivação.
+  $('#treeWorld').addEventListener('click',event=>{
+    const node=event.target.closest('[data-node]');if(!node)return;
+    const id=Number(node.dataset.node);
+    state.collapsed.has(id)?state.collapsed.delete(id):state.collapsed.add(id);
+    renderTreeView();
   });
-  $('#dynamicContent').addEventListener('keydown',event=>{if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-node]')){event.preventDefault();event.target.dispatchEvent(new MouseEvent('click',{bubbles:true}));}});
+  $('#treeWorld').addEventListener('keydown',event=>{
+    if((event.key==='Enter'||event.key===' ')&&event.target.matches('[data-node]')){
+      event.preventDefault();event.target.dispatchEvent(new MouseEvent('click',{bubbles:true}));
+    }
+  });
+  let dragging=null;
+  const viewport=$('#treeViewport');
+  viewport.addEventListener('pointerdown',event=>{
+    if(event.button!==0||event.target.closest('[data-node]')||!state.treeGeometry)return;
+    dragging={id:event.pointerId,x:event.clientX,y:event.clientY,panX:state.treePan.x,panY:state.treePan.y};
+    viewport.setPointerCapture(event.pointerId);viewport.classList.add('dragging');
+  });
+  viewport.addEventListener('pointermove',event=>{
+    if(!dragging||dragging.id!==event.pointerId)return;
+    state.treePan={x:dragging.panX+event.clientX-dragging.x,y:dragging.panY+event.clientY-dragging.y};
+    applyTreeTransform();
+  });
+  function endDrag(){dragging=null;viewport.classList.remove('dragging');}
+  viewport.addEventListener('pointerup',endDrag);viewport.addEventListener('pointercancel',endDrag);
+  viewport.addEventListener('lostpointercapture',endDrag);
+  // Operação sem mouse: setas movem o mapa, +/- aproximam e Home centraliza.
+  viewport.addEventListener('keydown',event=>{
+    if(event.target!==viewport||!state.treeGeometry)return;
+    const moves={ArrowLeft:[-65,0],ArrowRight:[65,0],ArrowUp:[0,-65],ArrowDown:[0,65]};
+    if(moves[event.key]){
+      event.preventDefault();state.treePan.x-=moves[event.key][0];state.treePan.y-=moves[event.key][1];applyTreeTransform();
+    }else if(event.key==='+'||event.key==='='){event.preventDefault();zoomTree(1.2);}
+    else if(event.key==='-'){event.preventDefault();zoomTree(1/1.2);}
+    else if(event.key==='Home'){event.preventDefault();centerTree();}
+  });
+  viewport.addEventListener('wheel',event=>{
+    if(!state.treeGeometry)return;
+    event.preventDefault();const bounds=viewport.getBoundingClientRect();
+    zoomTree(event.deltaY<0?1.12:1/1.12,event.clientX-bounds.left,event.clientY-bounds.top);
+  },{passive:false});
+  $('#treeCenter').addEventListener('click',centerTree);
+  $('#treeZoomIn').addEventListener('click',()=>zoomTree(1.2));
+  $('#treeZoomOut').addEventListener('click',()=>zoomTree(1/1.2));
+  $('#treeExpand').addEventListener('click',()=>{state.collapsed.clear();renderTreeView();});
+  $('#treeExport').addEventListener('click',()=>{
+    const svg=$('#treeWorld svg');if(!svg)return;
+    window.studio?.exportTree(svg.outerHTML).then(ok=>{if(ok)toast('Árvore SVG exportada.');}).catch(error=>toast(error.message));
+  });
+  // Centro em resize apenas quando a aba estiver visível. A navegação manual
+  // não é zerada em cada etapa, evitando saltos enquanto o aluno explora a árvore.
+  window.addEventListener('resize',()=>{if(state.mode==='tree')applyTreeTransform();});
   input.addEventListener('input',()=>{invalidate();refreshEditor();});
   input.addEventListener('scroll',scrollTogether);input.addEventListener('click',cursorInfo);input.addEventListener('keyup',cursorInfo);
   input.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();input.setRangeText('  ',input.selectionStart,input.selectionEnd,'end');input.dispatchEvent(new Event('input'));}});
@@ -335,7 +420,8 @@ function bindUI(){
     if(k==='n'){event.preventDefault();newFile();}
     if(k==='1'){event.preventDefault();setMode('code');}
     if(k==='2'){event.preventDefault();setMode('dynamic');}
-    if(k==='3'){event.preventDefault();setMode('static');}
+    if(k==='3'){event.preventDefault();setMode('tree');}
+    if(k==='4'){event.preventDefault();setMode('static');}
   });
   $('#btnUpdate').addEventListener('click',handleUpdate);
   $('#btnReleases').addEventListener('click',()=>window.studio?.openReleases().catch(e=>toast(e.message)));
@@ -349,7 +435,7 @@ async function initialize(){
     state.grammar=await window.studio.grammar();
     state.examples=await window.studio.samples();
     $('#examples').innerHTML=state.examples.map(item=>`<button class="example-item" type="button" data-example="${escapeHTML(item.name)}">${escapeHTML(item.title)}</button>`).join('');
-    const settings=await window.studio.getSettings();state.font=settings.font;state.scale=settings.scale;state.speed=settings.speed;applyPreferences();
+    const settings=await window.studio.getSettings();state.speed=settings.speed;applyPreferences();
     renderStatic();
   }catch(error){toast('Não foi possível carregar as configurações: '+error.message);}
 }

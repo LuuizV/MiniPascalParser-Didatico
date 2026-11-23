@@ -15,14 +15,15 @@
     <nav class="navigation" aria-label="Áreas">
       <button type="button" class="nav-item active" data-mode="code" aria-current="page"><span class="nav-icon" aria-hidden="true">{ }</span> <span>Código</span></button>
       <button type="button" class="nav-item" data-mode="dynamic"><span class="nav-icon" aria-hidden="true">▶</span> <span>Análise dinâmica</span></button>
+      <button type="button" class="nav-item" data-mode="tree"><span class="nav-icon" aria-hidden="true">⎇</span> <span>Árvore de derivação</span></button>
       <button type="button" class="nav-item" data-mode="static"><span class="nav-icon" aria-hidden="true">▤</span> <span>Dados estáticos</span><span class="nav-count" id="navErrors" hidden>0</span></button>
     </nav>
     <div class="side-bottom">
       <section class="update-card" aria-label="Atualizações">
-        <div class="update-heading"><strong>Atualizações</strong><span id="updateVersion">v5.3.0</span></div>
+        <div class="update-heading"><strong>Atualizações</strong><span id="updateVersion">v5.4.0</span></div>
         <p id="updateMessage" aria-live="polite">Verificando versão...</p>
         <div class="update-progress" id="updateProgressWrap" hidden><div id="updateProgressBar"></div></div>
-        <div class="update-buttons"><button id="btnUpdate" class="update-action" type="button">Verificar</button><button id="btnReleases" class="icon-button" type="button" title="Abrir Releases oficiais" aria-label="Abrir Releases">↗</button></div>
+        <div class="update-buttons"><button id="btnUpdate" class="update-action" type="button">Verificar</button><button id="btnReleases" class="icon-button" type="button" title="Abrir Releases oficiais" aria-label="Abrir Releases">Releases</button></div>
       </section>
     </div>
   </aside>
@@ -31,7 +32,7 @@
     <header class="topbar">
       <strong id="viewTitle">Código</strong>
       <div class="top-controls">
-        <div class="scale-controls" aria-label="Tamanho da interface"><button id="btnScaleMinus" type="button" title="Diminuir interface" aria-label="Diminuir tamanho da interface">A−</button><button id="btnScalePlus" type="button" title="Aumentar interface" aria-label="Aumentar tamanho da interface">A+</button></div>
+        
         <button class="primary-button" id="btnRun" type="button"><span aria-hidden="true">▶</span> Analisar código</button>
       </div>
     </header>
@@ -55,7 +56,7 @@
             <div id="lineNumbers" class="line-numbers" aria-hidden="true"></div>
             <div class="editor-layer"><pre id="codeHighlight" aria-hidden="true"></pre><textarea id="codeInput" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Código MiniPascal"></textarea></div>
           </div>
-          <div class="editor-toolbar"><div class="editor-info"><span id="editorCaret">Linha 1, coluna 1</span><span id="editorLines">1 linha</span></div><div class="editor-tool-actions"><button id="btnFontMinus" title="Diminuir fonte do código" type="button">A−</button><button id="btnFontPlus" title="Aumentar fonte do código" type="button">A+</button><button id="btnHelp" type="button">Ver gramática</button></div></div>
+          <div class="editor-toolbar"><div class="editor-info"><span id="editorCaret">Linha 1, coluna 1</span><span id="editorLines">1 linha</span></div><div class="editor-tool-actions"><button id="btnHelp" type="button">Ver produções</button></div></div>
         </div>
       </section>
 
@@ -70,8 +71,28 @@
             <div class="source-focus"><div class="subheading"><span id="focusLabel">Linha analisada</span> <span id="focusLine">—</span></div><div id="focusedCode" class="focused-code">Execute uma análise para acompanhar o código.</div></div>
             <div class="action-focus" id="actionBox"><div class="action-heading"><span id="actionBadge" class="action-badge">AGUARDANDO</span><strong id="actionTitle">Pronto para analisar</strong></div><p id="actionExplanation">O Parser mostrará aqui cada decisão da análise.</p><div id="actionTechnical" class="technical-note"></div></div>
           </div>
-          <div class="analysis-tabs" role="tablist" aria-label="Visualização dinâmica"><button type="button" data-dynamic-tab="simulator" class="active" role="tab" aria-selected="true">Simulador</button><button type="button" data-dynamic-tab="tree" role="tab" aria-selected="false">Árvore de derivação</button></div>
+          <div class="simulation-title">Simulador SLR(1) <span>Pilha e decisão do Parser</span></div>
           <div id="dynamicContent" class="content-area" role="tabpanel"></div>
+        </div>
+      </section>
+
+      <section id="view-tree" class="studio-view" aria-label="Árvore de derivação" hidden>
+        <div class="surface tree-panel">
+          <div class="tree-panel-heading">
+            <div><strong>Árvore de derivação</strong><span id="treeStatus" role="status">Execute uma análise para visualizar a árvore.</span></div>
+            <div class="tree-toolbar" aria-label="Navegação da árvore">
+              <button id="treeCenter" type="button">Centralizar</button>
+              <button id="treeZoomOut" type="button" aria-label="Diminuir zoom">−</button>
+              <span id="treeZoomLevel" aria-live="off">100%</span>
+              <button id="treeZoomIn" type="button" aria-label="Aumentar zoom">+</button>
+              <button id="treeExpand" type="button" hidden>Expandir todos</button>
+              <button id="treeExport" type="button">Exportar SVG</button>
+            </div>
+          </div>
+          <div class="tree-viewport" id="treeViewport" aria-label="Área interativa da árvore; arraste o fundo para mover, use a roda para ampliar ou reduzir" tabindex="0">
+            <div class="tree-world" id="treeWorld"></div>
+          </div>
+          <div class="tree-footer">Arraste o fundo para mover · Use a roda do mouse para ampliar · Clique num nó para recolher ou expandir</div>
         </div>
       </section>
 

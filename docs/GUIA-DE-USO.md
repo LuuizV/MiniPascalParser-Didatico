@@ -6,7 +6,7 @@
 
 O editor abre com um programa de exemplo. Utilize **Selecionar código** para ver os exemplos existentes. O seletor abre apenas quando solicitado e não ocupa permanentemente a lateral.
 
-Os comandos **Novo texto**, **Importar arquivo** e **Salvar** pertencem à aba Código. `Importar arquivo` aceita `.pas`, `.p` e `.txt`, substituindo a antiga duplicidade entre *Abrir arquivo* e *Importar TXT*. Alterações não salvas são sinalizadas e uma confirmação aparece antes de descartá-las ou fechar o aplicativo. Aumente ou diminua a fonte do código com **A−** e **A+** no rodapé do editor. Os controles de escala **A− / A+** no cabeçalho afetam a interface inteira e são preservados no computador.
+Os comandos **Novo texto**, **Importar arquivo** e **Salvar** pertencem à aba Código. `Importar arquivo` aceita `.pas`, `.p` e `.txt`, substituindo a antiga duplicidade entre *Abrir arquivo* e *Importar TXT*. Alterações não salvas são sinalizadas e uma confirmação aparece antes de descartá-las ou fechar o aplicativo. A fonte e os controles usam tamanhos fixos e confortáveis. A versão atual removeu os botões A−/A+ que distorciam a interface em algumas resoluções.
 
 ## 2. Análise dinâmica
 
@@ -19,12 +19,12 @@ Clique em **Analisar código** ou `Ctrl + Enter`. A área dinâmica mantém a li
 
 Use os controles para ir ao primeiro/anterior/próximo/último passo, reproduzir/pausar, mudar velocidade ou selecionar uma etapa no controle deslizante. `Alt + ←/→` também navega entre etapas enquanto a aba dinâmica está aberta.
 
-Em **Simulador**, a pilha apresentada corresponde ao estado **antes** da operação. Em **Árvore de derivação**, o gráfico contém os nós construídos pelas operações SHIFT e REDUCE **até** a etapa escolhida. Use **+ / −** para zoom, clique em um nó para recolher/expandir seus filhos e use **Exportar SVG** para salvar uma imagem vetorial.
+O **Simulador** está integrado à Análise dinâmica, sem subaba. A pilha apresentada corresponde ao estado **antes** da operação. A **Árvore de derivação** é uma aba independente: o gráfico contém os nós construídos por SHIFT e REDUCE **até** a etapa escolhida. Quando o aluno ainda não percorreu o histórico, a primeira abertura apresenta a derivação final resumida, com ramos expansíveis. Arraste o fundo para mover, use a roda do mouse para zoom, **Centralizar** para enquadrar ou clique nos nós para recolher/expandir. **Exportar SVG** salva a visualização atual.
 
 ## 3. Dados estáticos
 
 - **Tokens:** categoria, lexema, terminal, linha e coluna. Clique para localizar o token no editor.
-- **Gramática:** produções, FIRST/FOLLOW, estados LR(0) e ACTION/GOTO. Clique em **Acompanhar estado atual** para sincronizar com a etapa selecionada ou escolha outro estado manualmente.
+- **Gramática:** mostra somente as produções. FIRST/FOLLOW, estados LR(0) e ACTION/GOTO continuam calculados internamente, embora não sejam exibidos.
 - **Erros:** lista dos problemas encontrados, com navegação entre diagnósticos e abertura do ponto correspondente no editor.
 
 **Exportar análise** fica nesta área e produz um arquivo `.txt` contendo resultado, tokens, erros e histórico completo de operações.
@@ -38,7 +38,7 @@ Em **Simulador**, a pilha apresentada corresponde ao estado **antes** da operaç
 | `Ctrl + O` | Importar arquivo |
 | `Ctrl + S` | Salvar código |
 | `Ctrl + Shift + S` | Salvar como |
-| `Ctrl + 1 / 2 / 3` | Código / Análise dinâmica / Dados estáticos |
+| `Ctrl + 1 / 2 / 3 / 4` | Código / Análise dinâmica / Árvore / Dados estáticos |
 | `Alt + ← / →` | Etapa anterior / próxima (análise dinâmica) |
 
 ## Limitações

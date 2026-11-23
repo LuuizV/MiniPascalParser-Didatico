@@ -14,7 +14,7 @@ A interface é um cliente Electron isolado da lógica de análise. A comunicaç�
 | `src/ui-utils.js` | Offsets CRLF/LF/CR, explicações de ações, escape de HTML. |
 | `src/tree-graph.js` | Constrói árvore de derivação a partir do histórico real e calcula layout SVG. |
 | `src/renderer.js` | Orquestra editor, navegação, simulação, visualizações e atualizações. |
-| `src/index.html`, `src/style.css` | Semântica visual, estrutura e escala de UI. |
+| `src/index.html`, `src/style.css` | Semântica visual e layout responsivo com tipografia de tamanho consistente. |
 | `src/update-manager.cjs` | Controle das verificações, download e instalação autorizada. |
 | `tests/` | Exemplos, regressões do Lexer/SLR(1), testes do updater, helpers e Worker. |
 
@@ -27,12 +27,12 @@ Código-fonte
                                      └─ Histórico estruturado por etapa
                                         ├─ Linha do tempo + linha atual
                                         ├─ Cartão de operação
-                                        ├─ Pilha e ACTION/GOTO
-                                        └─ Árvore SVG concreta
+                                        ├─ Pilha do Simulador integrado
+                                        └─ Árvore SVG em tela independente
 
 Resultados completos (estáticos para a execução)
   ├─ Tokens
-  ├─ Gramática / FIRST / FOLLOW / LR(0) / ACTION / GOTO
+  ├─ Produções da Gramática (demais tabelas só no núcleo)
   └─ Erros
 ```
 
@@ -44,7 +44,7 @@ Os registros da pilha armazenam o estado anterior à ação; a árvore reconstr�
 - IPC nativo com validação de argumento; caminho de arquivo só é reutilizado após abertura ou escolha em diálogo nativo.
 - Fechamento com alterações não salvas exige escolher **Salvar**, **Não salvar** ou **Cancelar**.
 - Análise em Worker Thread, com timeout e substituição de análise antiga em caso de nova solicitação.
-- Preferências em arquivo local do diretório `userData` (fonte, escala, velocidade), com limites de validação.
+- Preferências em arquivo local do diretório `userData` (somente velocidade de reprodução). Escala e fonte antigas são ignoradas, evitando desconfiguração do layout.
 - A atualização automática usa somente as Releases oficiais e depende de confirmação; Portable é manual.
 - SVG renderizado com rótulos escapados e exportado por diálogo nativo.
 

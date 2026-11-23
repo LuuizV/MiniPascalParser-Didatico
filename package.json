@@ -1,6 +1,6 @@
 {
   "name": "minipascal",
-  "version": "5.3.0",
+  "version": "5.4.0",
   "private": true,
   "description": "Analisador didático MiniPascal: Lexer, Parser SLR(1) e visualizações interativas",
   "main": "src/main.cjs",

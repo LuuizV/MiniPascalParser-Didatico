@@ -13,8 +13,8 @@
 6. Preservar a gramática Mini_Pascal até autorização específica. Regressão de referência: 71 produções, 130 estados LR(0), 611 passos SLR(1); resultados e recuperação existentes.
 7. Não utilizar Python nem Java como dependências de execução; Electron + JavaScript.
 8. A visualização deve mostrar apenas resultados **reais** do Parser. Pilha anterior à operação; árvore após a operação; identificar limites e erro de recuperação.
-9. Manter tokens, gramática e erros como dados estáticos; simulador, árvore, linha do código e linha do tempo juntos na análise dinâmica.
-10. IHC: priorizar legibilidade, atalhos, escala persistente, sem comandos duplicados ou informação promocional inútil.
+9. Manter tokens, **somente as produções** e erros em Dados estáticos. Integrar o simulador à Análise dinâmica; manter árvore como **aba principal própria** com pan/zoom por mouse. Tabelas LR(0), FIRST/FOLLOW e ACTION/GOTO ficam no núcleo.
+10. IHC: priorizar tipografia consistente, layout responsivo, atalhos, controles sem duplicidade e **sem zoom global A−/A+** ou escolhas de fonte que deformem a tela.
 11. Manter `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`, CSP e IPC restrito. Escapar textos externos antes de inserir HTML/SVG.
 12. Não usar instalador silencioso, URLs arbitrárias, tokens pessoais em bundles ou janela de Release pública sem manifesto `latest.yml` completo.
 13. Rodar `npm run check` e `npm test` após alterações e, para mudanças na UI, executar também smoke test visual.
@@ -23,6 +23,8 @@
 
 Participantes: **Luiz Vicente Gomes Jirardi**, **Raimundo José Santiago Netto**, **Jader Levi Nascimento Abreu Azevedo**. Professor: **José Carlos Martins Oliveira**. Universidade Estadual do Sudoeste da Bahia — Compiladores.
 
-## Publicação obrigatória após autorização
+## Registro v5.4.0
 
-Cada ciclo autorizado deve incluir commit, nova versão, testes, build Windows x64, artefatos (NSIS, Portable, latest.yml, blockmap, SHA256) e **Release oficial pública validada**. Não encerrar a entrega como apenas ZIP ou commit. Continuar acumulando alterações até autorização explícita para implementar o pacote.
+- Mudança visual autorizada; manter a gramática Mini_Pascal até nova autorização específica.
+- Sempre que uma atualização consolidada for autorizada, entregar também a Release oficial com instalador, Portable, `latest.yml` e hashes, após testes.
+- Código comentado deve explicar decisões, invariantes e limites reais, sem atribuir a Mini_Pascal suporte completo a Sigma.

@@ -1,16 +1,26 @@
 # Registro de versões — MiniPascal
 
-## v5.3.0 — MiniPascal, identidade visual e limpeza
+## v5.4.0 — Leitura, árvore independente, produções e código documentado
 
-- Nome do aplicativo, instalador e edição portátil alterado de MiniPascal Studio para **MiniPascal**, preservando o `appId` do Electron para manter a identidade de atualização.
-- Ícone aprovado incluído em PNG e gerador de ICO multirresolução para Windows.
-- Removidos o Modo Apresentação, seu botão, evento e estilos exclusivos.
-- Botões de Expandir todos e Voltar ao estado atual são exibidos apenas quando úteis.
-- A ajuda passa a se chamar Ver gramática; cartão de erro acessível por clique ou teclado, sem botão duplicado.
-- Limpeza conservadora do CSS, preservando Lexer, SLR(1), árvore, simulador e atualizador.
-- Workflow Windows passa a gerar o ícone e validar os novos nomes de artefatos antes de tornar a Release pública.
-- Regra permanente: **toda atualização autorizada deve gerar uma Release no GitHub**, além de commit e testes. Não publicar mudanças isoladas sem autorização.
+- Removidos todos os ajustes A−/A+ de escala e fonte; eliminado o uso de preferências antigas que deformavam a interface. Tipografia padrão e navegação responsiva.
+- Árvore de derivação promovida a quarta área principal, com arraste, zoom no cursor, centralização, ramos recolhíveis e visão inicial compacta.
+- Simulador reunido diretamente à Análise dinâmica, com pilha e operações sem subabas.
+- Gramática simplificada para exibir somente suas produções; estrutura LR(0), FIRST/FOLLOW, ACTION/GOTO preservada no núcleo.
+- Comentários detalhados no Lexer, no Parser SLR(1), na recuperação de erros, na geração de tabelas, na Worker Thread e na construção da árvore.
+- 71 produções, 130 estados e 611 passos de regressão preservados. **A linguagem Sigma continua pendente** e não faz parte desta atualização.
+- Testes de interface visual com navegador simulado em quatro resoluções; testes de integração contínua e build Windows exigidos antes da Release.
 
+
+
+## v5.3.0 — Identidade MiniPascal e limpeza de interface
+
+- Alterado o nome exibido do aplicativo de MiniPascal Studio para **MiniPascal** em janela, interface, executáveis, instalador e documentação.
+- Ícone PNG aprovado integrado ao aplicativo; ícone ICO multirresolução usado no Windows.
+- Removido o Modo Apresentação, seus controles, eventos e CSS específicos.
+- Ações contextuais são mostradas apenas quando úteis: expandir nós recolhidos e retornar ao estado atual.
+- "Ajuda da linguagem" renomeada para "Ver gramática"; controles redundantes nos diagnósticos retirados.
+- Limpeza dos estilos não utilizados sem alterar Lexer, Parser, árvores ou atualizador.
+- Mantida a identidade técnica do aplicativo (`appId`) para reduzir risco nas atualizações.
 
 ## v5.2.0 — Refino de IHC e confiabilidade
 
@@ -29,7 +39,7 @@
 
 ---
 
-Este documento registra as mudanças funcionais e técnicas do MiniPascal Studio.
+Este documento registra as mudanças funcionais e técnicas do MiniPascal.
 
 ## [5.1.2] — Publicação segura e resiliência do atualizador (2026-11-22)
 

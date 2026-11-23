@@ -1,5 +1,13 @@
 'use strict';
-/** Processo principal: janelas seguras, arquivos e análise isolada em Worker Thread. */
+/**
+ * Processo principal do Electron: administra janela, diálogos e IPC nativo.
+ * O Parser não roda na thread da interface: cada execução usa Worker Thread
+ * isolada, limitada a 30 s e 500.000 caracteres. Nenhuma API de arquivos é
+ * exposta diretamente ao renderer, que mantém sandbox/contextIsolation.
+ *
+ * As ações que podem modificar o disco passam por diálogo nativo e validação;
+ * o app não instala atualizações silenciosamente nem ignora código não salvo.
+ */
 const {app,BrowserWindow,ipcMain,dialog,shell}=require('electron');
 const fs=require('node:fs/promises');
 const path=require('node:path');
@@ -21,6 +29,11 @@ function createWindow(){
   win.on('close',event=>{if(!allowClose){event.preventDefault();win.webContents.send('request-close');}});
   win.on('closed',()=>{win=null;});
 }
+/**
+ * Isolamento de carga: a análise anterior é substituída pela mais recente.
+ * `workerSeq` impede que uma resposta atrasada sobrescreva o resultado atual.
+ * Em qualquer saída (sucesso, erro ou timeout), a Worker é finalizada.
+ */
 function workerAnalyze(source){
   if(typeof source!=='string'||source.length>MAX_SOURCE)throw Error('O arquivo não pode ultrapassar 500.000 caracteres.');
   // A segunda análise substitui a anterior. Uma resposta antiga não pode sobrescrever a atual.
@@ -36,12 +49,15 @@ function workerAnalyze(source){
     worker.once('exit',code=>{if(!settled)finish(Error('Analisador interrompido ('+code+').'));});
   });
 }
+/** Preferências locais mínimas: a velocidade do simulador.
+ * Ignoramos a escala/fonte deixadas por versões antigas para impedir a
+ * deformação observada no Windows após zoom global. */
 async function safeSettingsRead(){
-  try {const settings=JSON.parse(await fs.readFile(path.join(app.getPath('userData'),'preferences.json'),'utf8'));return {scale:Math.max(0.9,Math.min(1.5,Number(settings.scale)||1)),font:Math.max(13,Math.min(23,Number(settings.font)||16)),speed:[350,700,1200,2000].includes(settings.speed)?settings.speed:700};}
-  catch {return {scale:1,font:16,speed:700};}
+  try {const settings=JSON.parse(await fs.readFile(path.join(app.getPath('userData'),'preferences.json'),'utf8'));return {speed:[350,700,1200,2000].includes(Number(settings.speed))?Number(settings.speed):700};}
+  catch {return {speed:700};}
 }
 async function safeSettingsWrite(data){
-  const pref={scale:Math.max(0.9,Math.min(1.5,Number(data?.scale)||1)),font:Math.max(13,Math.min(23,Number(data?.font)||16)),speed:[350,700,1200,2000].includes(Number(data?.speed))?Number(data.speed):700};
+  const pref={speed:[350,700,1200,2000].includes(Number(data?.speed))?Number(data.speed):700};
   const dir=app.getPath('userData');await fs.mkdir(dir,{recursive:true});await fs.writeFile(path.join(dir,'preferences.json'),JSON.stringify(pref,null,2),'utf8');return pref;
 }
 app.whenReady().then(()=>{
@@ -68,6 +84,9 @@ app.whenReady().then(()=>{
     const content=await fs.readFile(filePaths[0],'utf8');if(content.length>MAX_SOURCE)throw Error('Arquivo ultrapassa 500.000 caracteres.');
     approvedPaths.add(filePaths[0]);return {name:path.basename(filePaths[0]),path:filePaths[0],content};
   });
+  // O renderer não pode gravar em um caminho arbitrário: só reutiliza o
+  // escolhido pelo usuário em um diálogo anterior. `approvedPaths` registra
+  // esse consentimento e o tamanho do conteúdo limita abuso e erros acidentais.
   ipcMain.handle('save-file',async(_event,data)=>{
     if(!data||typeof data.content!=='string'||data.content.length>MAX_SOURCE)throw Error('Conteúdo inválido.');
     let filename=data.path;
