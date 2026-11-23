@@ -1,33 +1,25 @@
-# Contexto acadêmico
+# Contexto acadêmico e créditos
 
-[← Página principal](../README.md)
+[← Início](../README.md)
 
-**Instituição:** Universidade Estadual do Sudoeste da Bahia (UESB)  
-**Departamento:** Departamento de Ciências Exatas (DCET)  
-**Curso:** Ciência da Computação  
-**Disciplina:** Compiladores  
-**Professor:** **José Carlos Martins Oliveira**
+**Instituição:** Universidade Estadual do Sudoeste da Bahia — Ciência da Computação  
+**Disciplina:** Compiladores (2026.2)  
+**Professor:** José Carlos Martins Oliveira
 
-## Estudantes participantes
+**Integrantes:** Luiz Vicente Gomes Jirardi, Raimundo José Santiago Netto e Jader Levi Nascimento Abreu Azevedo.
 
-- **Luiz Vicente Gomes Jirardi**
-- **Raimundo José Santiago Netto**
-- **Jader Levi Nascimento Abreu Azevedo**
+## Escopo
 
-## Objetivo da atividade
+O trabalho de 2026.2 utiliza a linguagem Mini_Pascal. Na primeira unidade, o analisador léxico deve identificar tokens e gerar um arquivo texto com pares `<cadeia, token>`. A segunda unidade pede análise sintática SLR(1) e análise semântica, com resultado `OK` ou erros indicando a linha.
 
-O enunciado da segunda unidade solicita a implementação de um analisador sintático utilizando **SLR(1)**, integrado ao analisador léxico produzido anteriormente, com documentação, testes e mensagens esclarecedoras. O MiniPascal Studio amplia a observação do Lexer e do Parser com simulação interativa, pilha, gramática e estados.
+O MiniPascal inclui Lexer, Parser SLR(1), simulador de pilha, árvore de derivação e diagnósticos de erro. Seu núcleo é executado em Java e a interface usa Electron.
 
-## O que foi implementado
+## Verificações
 
-Lexer integrado, Parser SLR(1), tabelas ACTION/GOTO, FIRST/FOLLOW, estados LR(0), diagnóstico de erros, árvore de derivação e interface desktop Electron. A suíte documenta 71 produções, 130 estados e 611 passos de regressão nos seis programas-base.
+A gramática implementada possui 71 produções e 130 estados LR(0). Seis programas de regressão resultam em 611 operações SLR(1), preservando os resultados do núcleo anterior. Outros testes verificam tokens, erros e a comunicação Java/Electron.
 
-## O que não foi implementado
+## Limitações
 
-Não há interpretação, execução de programas ou geração de código de máquina. A gramática preservada do Parser é **Mini_Pascal** e **não** cobre integralmente a linguagem **Sigma** da especificação do professor. A árvore pode ficar parcial após recuperação de erro; o Windows e o instalador precisam de validação prática.
+O aplicativo **não executa os programas** e não realiza análise semântica completa. Nem todas as construções mencionadas na visão geral lexical de Mini_Pascal constam da gramática sintática fornecida; a implementação preserva as regras do analisador existente. É necessária validação manual de instalação e atualização em Windows.
 
-## Avaliação técnica
-
-A manutenção dos históricos de teste oferece evidência de compatibilidade com a implementação Java para as entradas verificadas. A visualização passo a passo facilita a apresentação e o estudo do algoritmo, mas não substitui a validação para outras entradas ou a revisão da gramática.
-
-As contribuições são creditadas ao grupo, sem atribuição individual de funções não documentadas.
+Os resultados automatizados demonstram a compatibilidade dos casos testados, não a correção para todas as entradas possíveis. A documentação acadêmica final precisa descrever essas limitações fielmente.

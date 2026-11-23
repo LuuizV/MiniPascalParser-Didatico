@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   windows:
-    name: Compilar e publicar Release validada
+    name: Compilar e publicar release validada
     runs-on: windows-latest
     timeout-minutes: 55
     steps:
@@ -20,13 +20,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Preparar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
       - name: Instalar dependencias
         run: npm install --no-audit --no-fund
       - name: Validar regressao e sintaxe
         run: |
           npm run check
           npm test
-      - name: Reservar Release como rascunho
+      - name: Reservar Release como rascunho privado de publicacao
         id: version
         shell: pwsh
         env:
@@ -41,33 +46,37 @@ jobs:
           if ($exists) {
             $release = $info | ConvertFrom-Json
             if ($release.isDraft -and @($release.assets).Count -eq 0) {
+              Write-Host "Retomando rascunho sem artefatos: $tag"
               "publish=true" >> $env:GITHUB_OUTPUT
             } elseif (!$release.isDraft) {
               $required = @("MiniPascal-Setup-$version-x64.exe", "MiniPascal-Portable-$version-x64.exe", 'latest.yml', 'SHA256SUMS.txt')
               $assets = @($release.assets | ForEach-Object { $_.name })
-              if (@($required | Where-Object { $assets -notcontains $_ }).Count -ne 0) { throw "Release $tag publica incompleta; revisar manualmente." }
+              if (@($required | Where-Object { $assets -notcontains $_ }).Count -ne 0) { throw "Release $tag esta publica mas incompleta. Nao sobrescreva artefatos; corrija manualmente." }
               "publish=false" >> $env:GITHUB_OUTPUT
-              Write-Host "Release $tag ja publicada; para outras mudancas incremente a versao."
+              Write-Host "Release $tag ja publicada e completa. Alteracoes futuras exigem nova versao."
             } else {
-              throw "Rascunho $tag contem artefatos; revise antes de executar novamente."
+              throw "Rascunho $tag contem artefatos. Revise ou remova o rascunho incompleto antes de tentar novamente."
             }
           } else {
-            gh release create $tag --draft --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "MiniPascal $tag - Windows" --notes "Rascunho em validacao."
-            if ($LASTEXITCODE -ne 0) { throw "Falha criando rascunho $tag" }
+            gh release create $tag --draft --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "MiniPascal $tag - Windows" --notes "Release em preparacao. A publicacao ocorre somente apos validacao dos artefatos."
+            if ($LASTEXITCODE -ne 0) { throw "Falha ao criar o rascunho da Release $tag." }
             "publish=true" >> $env:GITHUB_OUTPUT
           }
-      - name: Compilar NSIS e portatil no rascunho
+      - name: Preparar runtime Java incluido na distribuicao
+        if: steps.version.outputs.publish == 'true'
+        run: npm run java:runtime
+      - name: Gerar icone Windows multirresolucao
         if: steps.version.outputs.publish == 'true'
         shell: pwsh
-        run: |
-          npm run icon:win
-          if ($LASTEXITCODE -ne 0) { throw 'Falha ao gerar o icone Windows.' }
-          npx electron-builder --win nsis portable --x64 --publish always
-          if ($LASTEXITCODE -ne 0) { throw 'Falha ao compilar os instaladores.' }
+        run: ./scripts/generate-windows-icon.ps1
+      - name: Compilar NSIS e portatil para o rascunho
+        if: steps.version.outputs.publish == 'true'
+        shell: pwsh
+        run: npx electron-builder --win nsis portable --x64 --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-      - name: Conferir latest.yml e calcular SHA256
+      - name: Validar manifesto local e gerar SHA256
         if: steps.version.outputs.publish == 'true'
         shell: pwsh
         run: |
@@ -75,17 +84,16 @@ jobs:
           $setup = "MiniPascal-Setup-$version-x64.exe"
           $portable = "MiniPascal-Portable-$version-x64.exe"
           foreach ($name in @($setup, $portable, 'latest.yml', "$setup.blockmap")) {
-            if (!(Test-Path "dist/$name")) { throw "Artefato ausente: $name" }
+            if (!(Test-Path "dist/$name")) { throw "Falta artefato: $name" }
           }
-          if (!(Test-Path 'assets/minipascal.ico')) { throw 'Icone ICO ausente do build.' }
           $manifest = Get-Content dist/latest.yml -Raw
           if (!$manifest.Contains("version: $version") -or !$manifest.Contains($setup) -or !$manifest.Contains('sha512:')) {
-            throw 'latest.yml nao corresponde a versao, ao instalador ou ao hash esperado.'
+            throw 'latest.yml nao corresponde a versao, instalador e hash esperados.'
           }
           Get-ChildItem dist/*.exe | ForEach-Object {
             "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
           } | Set-Content dist/SHA256SUMS.txt -Encoding utf8
-      - name: Validar assets remotos e publicar apenas a Release completa
+      - name: Validar arquivos remotos e publicar de forma atomica
         if: steps.version.outputs.publish == 'true'
         shell: pwsh
         env:
@@ -93,20 +101,20 @@ jobs:
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
         run: |
           gh release upload "$env:RELEASE_TAG" dist/SHA256SUMS.txt --repo "$env:GITHUB_REPOSITORY"
-          if ($LASTEXITCODE -ne 0) { throw 'Falha ao enviar SHA256SUMS.' }
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao enviar hashes.' }
           $release = gh release view "$env:RELEASE_TAG" --repo "$env:GITHUB_REPOSITORY" --json isDraft,assets | ConvertFrom-Json
-          if (!$release.isDraft) { throw 'Release publica antes da verificacao final.' }
+          if (!$release.isDraft) { throw 'A Release ficou publica antes de completar a validacao.' }
           $version = node -p "require('./package.json').version"
           $setup = "MiniPascal-Setup-$version-x64.exe"
           $required = @($setup, "MiniPascal-Portable-$version-x64.exe", 'latest.yml', "$setup.blockmap", 'SHA256SUMS.txt')
           $assets = @($release.assets | ForEach-Object { $_.name })
           foreach ($name in $required) {
-            if ($assets -notcontains $name) { throw "Artefato $name ausente no GitHub. Release permanece rascunho." }
+            if ($assets -notcontains $name) { throw "O arquivo $name nao chegou ao GitHub. A Release permanece em rascunho." }
           }
-          gh release edit "$env:RELEASE_TAG" --repo "$env:GITHUB_REPOSITORY" --draft=false --latest --title "MiniPascal $env:RELEASE_TAG - Windows" --notes "Setup NSIS atualizado por Releases, Portable manual, latest.yml, blockmap e SHA256. Aplicativo sem assinatura de codigo."
-          if ($LASTEXITCODE -ne 0) { throw 'Falha ao publicar. Release permanece rascunho.' }
+          gh release edit "$env:RELEASE_TAG" --repo "$env:GITHUB_REPOSITORY" --draft=false --latest --title "MiniPascal $env:RELEASE_TAG - Windows" --notes "Versao Windows x64 validada. Inclui Setup NSIS com atualizacoes, Portable (manual), latest.yml, blockmap e hashes SHA256. Executaveis ainda nao assinados."
+          if ($LASTEXITCODE -ne 0) { throw 'A Release permaneceu em rascunho: falha ao publicar.' }
           $after = gh release view "$env:RELEASE_TAG" --repo "$env:GITHUB_REPOSITORY" --json isDraft | ConvertFrom-Json
-          if ($after.isDraft) { throw 'Release continua em rascunho.' }
+          if ($after.isDraft) { throw 'Release ainda esta em rascunho.' }
       - name: Guardar artefatos
         if: steps.version.outputs.publish == 'true'
         uses: actions/upload-artifact@v4

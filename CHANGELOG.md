@@ -1,3 +1,12 @@
+## v5.5.0 — Núcleo Java e interface
+
+- Parser SLR(1) e Lexer executados em processo Java com integração JSON ao Electron.
+- Runtime Java empacotado para execução sem Java instalado.
+- Editor com linhas sincronizadas e marcação vermelha de erros léxicos e sintáticos.
+- Barra de ações do Código reorganizada e novo ícone nas cores do aplicativo.
+- Exportações TXT de tokens e análise; removida a exportação SVG.
+- Removidos o antigo Parser JavaScript, Worker e arquivos não utilizados.
+
 # Registro de versões — MiniPascal
 
 ## v5.4.0 — Leitura, árvore independente, produções e código documentado

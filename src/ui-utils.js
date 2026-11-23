@@ -29,5 +29,16 @@
     if(d.tipo==='ACCEPT')return {kind:'accept',title:'Código aceito pela gramática',description:'Todos os tokens foram reconhecidos pela gramática. Isso confirma a análise sintática, não a execução do programa.',technical:'ACTION = ACCEPT'};
     return {kind:'error',title:'Encontrou um erro',description:`O token “${d.token?.lexema??d.terminal}” não é aceito neste estado. ${d.indiceRetomada<0?'A análise não conseguiu continuar.':'O Parser tentou recuperar e retomar a leitura.'}`,technical:`ACTION[${d.estado}, ${d.terminal}] = erro · Estados removidos: ${d.estadosRemovidos??0}`};
   }
-  return {escapeHTML:esc,offsetAt,sourceLine,actionInfo};
+  function tokenReport(tokens){
+    return tokens.map(t=>`<${t.lexema}, ${t.descricao}>`).join('\n')+'\n';
+  }
+  function analysisReport(result,name,version){
+    const lines=[`MiniPascal v${version} — ${name}`,`ESTADOS=${result.estados}`,`ACEITO=${result.aceito}`];
+    result.tokens.forEach(t=>lines.push(`TOK=<${t.lexema}, ${t.descricao}> [linha ${t.linha}, coluna ${t.coluna}]`));
+    result.errosLexicos.forEach(e=>lines.push(`LEX=Linha ${e.linha}, coluna ${e.coluna}: ${e.mensagem}`));
+    result.errosSintaticos.forEach(e=>lines.push(`SYN=Linha ${e.linha}, coluna ${e.coluna}: ${e.mensagem}`));
+    result.passos.forEach(p=>lines.push(`STEP=${p.passo}|${p.pilha}|${p.entrada}|${p.acao}`));
+    return lines.join('\n')+'\n';
+  }
+  return {escapeHTML:esc,offsetAt,sourceLine,actionInfo,tokenReport,analysisReport};
 });

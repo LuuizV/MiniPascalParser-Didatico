@@ -1,6 +1,6 @@
 # Guia de utilização — MiniPascal
 
-[Início](../README.md) · [Arquitetura](ARQUITETURA.md) · [Plano Mestre](PLANO-MESTRE.md)
+[Início](../README.md) · [Arquitetura](ARQUITETURA.md)
 
 ## 1. Código
 
@@ -19,7 +19,7 @@ Clique em **Analisar código** ou `Ctrl + Enter`. A área dinâmica mantém a li
 
 Use os controles para ir ao primeiro/anterior/próximo/último passo, reproduzir/pausar, mudar velocidade ou selecionar uma etapa no controle deslizante. `Alt + ←/→` também navega entre etapas enquanto a aba dinâmica está aberta.
 
-O **Simulador** está integrado à Análise dinâmica, sem subaba. A pilha apresentada corresponde ao estado **antes** da operação. A **Árvore de derivação** é uma aba independente: o gráfico contém os nós construídos por SHIFT e REDUCE **até** a etapa escolhida. Quando o aluno ainda não percorreu o histórico, a primeira abertura apresenta a derivação final resumida, com ramos expansíveis. Arraste o fundo para mover, use a roda do mouse para zoom, **Centralizar** para enquadrar ou clique nos nós para recolher/expandir. **Exportar SVG** salva a visualização atual.
+O **Simulador** está integrado à Análise dinâmica, sem subaba. A pilha apresentada corresponde ao estado **antes** da operação. A **Árvore de derivação** é uma aba independente: o gráfico contém os nós construídos por SHIFT e REDUCE **até** a etapa escolhida. Quando o aluno ainda não percorreu o histórico, a primeira abertura apresenta a derivação final resumida, com ramos expansíveis. Arraste o fundo para mover, use a roda do mouse para zoom, **Centralizar** para enquadrar ou clique nos nós para recolher/expandir. **Exportar tokens TXT** salva a visualização atual.
 
 ## 3. Dados estáticos
 
@@ -27,7 +27,7 @@ O **Simulador** está integrado à Análise dinâmica, sem subaba. A pilha apres
 - **Gramática:** mostra somente as produções. FIRST/FOLLOW, estados LR(0) e ACTION/GOTO continuam calculados internamente, embora não sejam exibidos.
 - **Erros:** lista dos problemas encontrados, com navegação entre diagnósticos e abertura do ponto correspondente no editor.
 
-**Exportar análise** fica nesta área e produz um arquivo `.txt` contendo resultado, tokens, erros e histórico completo de operações.
+**Exportar tokens TXT** e **Exportar análise TXT** ficam nesta área e produz um arquivo `.txt` contendo resultado, tokens, erros e histórico completo de operações.
 
 ## Atalhos
 

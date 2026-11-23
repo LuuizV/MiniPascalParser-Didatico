@@ -6,7 +6,7 @@
  */
 const $=selector=>document.querySelector(selector);
 const $$=selector=>Array.from(document.querySelectorAll(selector));
-const {escapeHTML,offsetAt,sourceLine,actionInfo}=window.MiniPascalUI;
+const {escapeHTML,offsetAt,sourceLine,actionInfo,tokenReport,analysisReport}=window.MiniPascalUI;
 const tree=window.MiniPascalTree;
 const sample=`program exemplo;
 var contador: integer;
@@ -39,9 +39,32 @@ function syntaxColor(code){
 }
 function activeToken(){const step=state.result?.passos[state.step];return state.manualFocus|| (state.selectedToken>=0?state.result?.tokens[state.selectedToken]:step?.detalhes.token);}
 function highlightedCode(){
-  const content=input.value,t=activeToken();if(!t?.lexema)return syntaxColor(content)+'\n';
-  const start=offsetAt(content,t.linha,t.coluna),end=Math.min(content.length,start+t.lexema.length);
-  return syntaxColor(content.slice(0,start))+`<span class="hit">${escapeHTML(content.slice(start,end))}</span>`+syntaxColor(content.slice(end))+'\n';
+  const content=input.value;
+  const current=activeToken();
+  const marks=[];
+  for(const error of [...(state.result?.errosLexicos??[]),...(state.result?.errosSintaticos??[])]){
+    const start=offsetAt(content,error.linha,error.coluna);
+    const line=sourceLine(content,error.linha);
+    const column=Math.max(0,error.coluna-1);
+    const length=Math.max(1,Math.min(line.length-column,(error.lexema||error.encontrado||'').length||1));
+    if(start<content.length)marks.push({start,end:Math.min(content.length,start+length),kind:'error-token'});
+  }
+  if(current?.lexema){
+    const start=offsetAt(content,current.linha,current.coluna);
+    marks.push({start,end:Math.min(content.length,start+current.lexema.length),kind:'hit'});
+  }
+  // Os erros prevalecem sobre o destaque do token selecionado.
+  const bounds=new Set([0,content.length]);
+  marks.forEach(m=>{bounds.add(m.start);bounds.add(m.end);});
+  const points=[...bounds].sort((a,b)=>a-b);
+  let output='';
+  for(let i=0;i<points.length-1;i++){
+    const a=points[i],b=points[i+1],section=content.slice(a,b);
+    const m=marks.find(x=>x.kind==='error-token'&&x.start<=a&&x.end>=b)
+      ||marks.find(x=>x.kind==='hit'&&x.start<=a&&x.end>=b);
+    output+=m?`<span class="${m.kind}">${escapeHTML(section)}</span>`:syntaxColor(section);
+  }
+  return output+'\n';
 }
 function scrollTogether(){const h=$('#codeHighlight'),nums=$('#lineNumbers');h.scrollTop=input.scrollTop;h.scrollLeft=input.scrollLeft;nums.scrollTop=input.scrollTop;}
 function cursorInfo(){const text=input.value.slice(0,input.selectionStart),parts=text.split(/\r\n|\r|\n/);$('#editorCaret').textContent=`Linha ${parts.length}, coluna ${parts.at(-1).length+1}`;}
@@ -70,6 +93,7 @@ function savePreferences(){window.studio?.saveSettings({speed:state.speed}).catc
 function setMode(mode){
   if(!['code','dynamic','tree','static'].includes(mode))return;
   state.mode=mode;
+  document.body.classList.toggle('code-mode',mode==='code');
   $$('.studio-view').forEach(view=>view.hidden=view.id!==`view-${mode}`);
   $$('.nav-item').forEach(b=>{const active=b.dataset.mode===mode;b.classList.toggle('active',active);active?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current');});
   $('#viewTitle').textContent={code:'Código',dynamic:'Análise dinâmica',tree:'Árvore de derivação',static:'Dados estáticos'}[mode];
@@ -186,7 +210,7 @@ function renderTreeView(){
   if(!r?.passos.length||!g){
     world.innerHTML='<div class="tree-placeholder">Analise um código para construir a árvore.</div>';
     state.treeGeometry=null;status.textContent='Nenhuma derivação disponível.';
-    $('#treeExport').disabled=true;$('#treeCenter').disabled=true;$('#treeExpand').hidden=true;return;
+    $('#treeCenter').disabled=true;$('#treeExpand').hidden=true;return;
   }
   const built=tree.build(r.passos,g.productions,state.step),layout=tree.layout(built.roots,state.collapsed,420);
   state.treeGeometry={width:layout.width,height:layout.height};
@@ -199,7 +223,7 @@ function renderTreeView(){
   world.style.width=layout.width+'px';world.style.height=layout.height+'px';
   status.textContent=`Etapa ${state.step+1} de ${r.passos.length}${built.interrupted?' · Parcial após erro':''}${layout.truncated?' · Parte dos nós ocultada por desempenho':''}`;
   if(built.interrupted&&built.reason)status.title=built.reason;
-  $('#treeExport').disabled=false;$('#treeCenter').disabled=false;$('#treeExpand').hidden=state.collapsed.size===0;
+  $('#treeCenter').disabled=false;$('#treeExpand').hidden=state.collapsed.size===0;
   applyTreeTransform();
 }
 function applyTreeTransform(){
@@ -260,15 +284,12 @@ function jumpToCode(line,col=1,length=1){
   const lineHeight=parseFloat(getComputedStyle(input).lineHeight)||27;
   input.scrollTop=Math.max(0,(Number(line)-3)*lineHeight);refreshEditor();
 }
-function saveReport(){
+function saveReport(kind='analysis'){
   if(!state.result){toast('Analise o código antes de exportar.');return;}
-  const r=state.result;
-  const lines=[`MiniPascal v5.4.0 — ${state.fileName}`,`ESTADOS=${r.estados}`,`ACEITO=${r.aceito}`];
-  r.tokens.forEach(t=>lines.push(`TOK=<${t.lexema}, ${t.descricao}> [linha ${t.linha}, coluna ${t.coluna}]`));
-  r.errosLexicos.forEach(e=>lines.push(`LEX=Linha ${e.linha}, coluna ${e.coluna}: ${e.mensagem}`));
-  r.errosSintaticos.forEach(e=>lines.push(`SYN=Linha ${e.linha}, coluna ${e.coluna}: ${e.mensagem}`));
-  r.passos.forEach(p=>lines.push(`STEP=${p.passo}|${p.pilha}|${p.entrada}|${p.acao}`));
-  window.studio?.exportReport(lines.join('\n')+'\n').then(ok=>{if(ok)toast('Relatório exportado com sucesso.');}).catch(e=>toast(e.message));
+  const report=kind==='tokens'?tokenReport(state.result.tokens):analysisReport(state.result,state.fileName,'5.5.0');
+  window.studio?.exportReport({kind,content:report}).then(ok=>{
+    if(ok)toast(kind==='tokens'?'Tokens exportados.':'Análise exportada.');
+  }).catch(e=>toast(e.message));
 }
 async function saveFile(saveAs=false){
   try{
@@ -336,7 +357,9 @@ function bindUI(){
   document.addEventListener('keydown',event=>{if(event.key==='Escape')closeExamples();});
   $('#examples').addEventListener('click',event=>{const el=event.target.closest('[data-example]');if(el)openExample(el);});
   $('#btnNew').addEventListener('click',newFile);$('#btnImport').addEventListener('click',openFile);
-  $('#btnSave').addEventListener('click',()=>saveFile());$('#btnExport').addEventListener('click',saveReport);
+  $('#btnSave').addEventListener('click',()=>saveFile());
+  $('#btnExport').addEventListener('click',()=>saveReport('analysis'));
+  $('#btnExportTokens').addEventListener('click',()=>saveReport('tokens'));
   $('#btnHelp').addEventListener('click',()=>{state.staticTab='grammar';setMode('static');});
   $('#btnFirst').addEventListener('click',()=>{pause();setStep(0);});
   $('#btnLast').addEventListener('click',()=>{pause();setStep((state.result?.passos.length||1)-1);});
@@ -400,10 +423,6 @@ function bindUI(){
   $('#treeZoomIn').addEventListener('click',()=>zoomTree(1.2));
   $('#treeZoomOut').addEventListener('click',()=>zoomTree(1/1.2));
   $('#treeExpand').addEventListener('click',()=>{state.collapsed.clear();renderTreeView();});
-  $('#treeExport').addEventListener('click',()=>{
-    const svg=$('#treeWorld svg');if(!svg)return;
-    window.studio?.exportTree(svg.outerHTML).then(ok=>{if(ok)toast('Árvore SVG exportada.');}).catch(error=>toast(error.message));
-  });
   // Centro em resize apenas quando a aba estiver visível. A navegação manual
   // não é zerada em cada etapa, evitando saltos enquanto o aluno explora a árvore.
   window.addEventListener('resize',()=>{if(state.mode==='tree')applyTreeTransform();});
@@ -427,7 +446,7 @@ function bindUI(){
   $('#btnReleases').addEventListener('click',()=>window.studio?.openReleases().catch(e=>toast(e.message)));
 }
 async function initialize(){
-  bindUI();setDirty(false);refreshEditor();refreshSummary();updateTimeline();renderDynamic();renderStatic();
+  bindUI();document.body.classList.add('code-mode');setDirty(false);refreshEditor();refreshSummary();updateTimeline();renderDynamic();renderStatic();
   if(!window.studio){status('Pré-visualização. Execute no Electron para usar os arquivos e o Parser.');return;}
   try{
     window.studio.onCloseRequest(()=>{void closeRequest();});

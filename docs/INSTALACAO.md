@@ -1,27 +1,36 @@
 # Instalação e execução
 
-[← Página principal](../README.md) · [Guia de uso](GUIA-DE-USO.md)
+[← Início](../README.md) · [Guia de uso](GUIA-DE-USO.md) · [Atualizações](ATUALIZACOES.md)
 
-## Windows x64
+## Usuários Windows x64
 
-1. Visite [Releases](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest).
-2. Baixe o arquivo **Setup** para instalar no Windows e receber atualizações pelo próprio programa; ou **Portable** para usar sem instalação e atualizar manualmente.
-3. Execute o arquivo `.exe`. Na primeira abertura, escolha um programa de exemplo na lateral.
-4. Clique em **Analisar código** (`Ctrl+Enter`).
+Acesse **[Releases](https://github.com/LuuizV/MiniPascalParser-Didatico/releases/latest)**. Existem duas distribuições:
 
-O executável distribuído **não depende de Java, Python ou Node.js**. Os pacotes ainda não são assinados digitalmente; o SmartScreen pode exibir avisos. Verifique a origem e, quando disponível, o hash SHA256 indicado na Release.
+| Pacote | Finalidade | Atualizações |
+|---|---|---|
+| `MiniPascal-Setup-<versão>-x64.exe` | Instalação no usuário do Windows, com atalhos. | Pelo próprio programa, com confirmação. |
+| `MiniPascal-Portable-<versão>-x64.exe` | Uso sem instalação permanente. | Substituição manual pela Release mais recente. |
 
-### Verificar o SHA256 no PowerShell
+1. Baixe um dos arquivos na Release mais recente.
+2. Execute o arquivo `.exe`. No instalador, siga as etapas apresentadas pelo Windows.
+3. Na primeira abertura, carregue um exemplo na barra lateral ou crie um programa.
+4. Pressione **Ctrl + Enter** para analisar.
+
+> **Segurança:** o executável ainda não é assinado digitalmente. O Windows pode mostrar aviso do SmartScreen. Confira a procedência da Release e, se disponível, compare o SHA256 ao arquivo `SHA256SUMS.txt` publicado junto ao instalador. O aviso não prova que o programa é seguro ou inseguro por si só.
+
+### Validação de integridade
+
+No PowerShell, na pasta do arquivo baixado:
 
 ```powershell
-Get-FileHash .\MiniPascal-Setup-5.1.0-x64.exe -Algorithm SHA256
+Get-FileHash .\MiniPascal-Setup-5.3.0-x64.exe -Algorithm SHA256
 ```
 
-Compare com a linha correspondente em `SHA256SUMS.txt`, ajustando o nome para o arquivo efetivamente baixado.
+Compare o resultado com a linha correspondente de `SHA256SUMS.txt`. Ajuste o nome para a versão efetivamente baixada.
 
-## Desenvolvedores
+## Desenvolvimento (Windows, Linux e macOS)
 
-Instale Node.js 22+ e npm. Na raiz do projeto:
+Requisitos: Node.js 22+ e npm. Execute na pasta do projeto:
 
 ```bash
 npm install
@@ -30,12 +39,22 @@ npm test
 npm start
 ```
 
-Para gerar o instalador no Windows: `npm run dist:win`.
+O modo de desenvolvimento **não instala atualizações**; apresenta apenas um atalho para a página oficial de Releases. Para gerar um pacote Windows em um computador Windows:
+
+```bash
+npm run dist:win
+```
+
+Para uso final do instalador Windows, Node.js, Python e Java **não são necessários**.
 
 ## Solução de problemas
 
-- **Nenhum .exe publicado:** consulte a execução [Windows no Actions](https://github.com/LuuizV/MiniPascalParser-Didatico/actions/workflows/build-windows.yml).
-- **Atualização indisponível:** confirme conexão, Release publicada e arquivo `latest.yml`.
-- **Portable não instala atualização:** é esperado. Baixe um novo portátil na Release.
-- **Código não salvo antes de atualizar:** o aplicativo solicita salvamento antes de reiniciar.
-- **SmartScreen:** a distribuição não está assinada. Confira procedência e integridade.
+**Apareceu “Não é possível verificar atualizações”?** Confira a conexão de rede, se a Release não é rascunho e se contém `latest.yml`. Consulte [Atualizações](ATUALIZACOES.md).
+
+**Estou usando o portátil e não aparece “Instalar”?** É esperado. O pacote Portable não oferece auto-update no local. Abra a Release mais recente e baixe uma nova cópia.
+
+**Windows avisou sobre aplicativo desconhecido.** A distribuição ainda não está assinada digitalmente; valide a origem e os hashes antes de prosseguir.
+
+**Não existe `.exe` na Release.** Verifique a execução do workflow [Windows](https://github.com/LuuizV/MiniPascalParser-Didatico/actions/workflows/build-windows.yml). A compilação pode não ter terminado ou pode ter falhado.
+
+**O aplicativo fecha durante atualização.** A instalação do NSIS exige encerramento. Salve o arquivo antes de confirmar; o editor solicitará isso quando houver mudanças pendentes.

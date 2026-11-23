@@ -1,16 +1,17 @@
 {
   "name": "minipascal",
-  "version": "5.4.0",
+  "version": "5.5.0",
   "private": true,
-  "description": "Analisador didático MiniPascal: Lexer, Parser SLR(1) e visualizações interativas",
+  "description": "Analisador MiniPascal com núcleo SLR(1) em Java e interface Electron",
   "main": "src/main.cjs",
   "scripts": {
     "start": "electron .",
-    "test": "node --test tests/*.test.cjs",
-    "check": "node --check src/main.cjs && node --check src/preload.cjs && node --check src/update-manager.cjs && node --check src/core.cjs && node --check src/analysis-worker.cjs && node --check src/ui-utils.js && node --check src/tree-graph.js && node --check src/renderer.js",
-    "dist:win": "npm run icon:win && electron-builder --win nsis portable",
-    "dist:linux": "electron-builder --linux AppImage",
-    "icon:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/generate-windows-icon.ps1"
+    "test": "npm run java:compile && node --test tests/*.test.cjs",
+    "check": "node --check src/main.cjs && node --check src/preload.cjs && node --check src/update-manager.cjs && node --check src/ui-utils.js && node --check src/tree-graph.js && node --check src/renderer.js && node --check src/java-runner.cjs && node --check scripts/build-java.cjs",
+    "dist:win": "npm run java:runtime && npm run icon:win && electron-builder --win nsis portable",
+    "icon:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/generate-windows-icon.ps1",
+    "java:compile": "node scripts/build-java.cjs",
+    "java:runtime": "node scripts/build-java.cjs --runtime"
   },
   "devDependencies": {
     "electron": "45.4.1",
@@ -63,7 +64,17 @@
     },
     "portable": {
       "artifactName": "MiniPascal-Portable-${version}-${arch}.${ext}"
-    }
+    },
+    "extraResources": [
+      {
+        "from": "java/build/minipascal-engine.jar",
+        "to": "engine/minipascal-engine.jar"
+      },
+      {
+        "from": "java/build/runtime",
+        "to": "engine/runtime"
+      }
+    ]
   },
   "dependencies": {
     "electron-updater": "6.8.11"

@@ -20,7 +20,7 @@
     </nav>
     <div class="side-bottom">
       <section class="update-card" aria-label="Atualizações">
-        <div class="update-heading"><strong>Atualizações</strong><span id="updateVersion">v5.4.0</span></div>
+        <div class="update-heading"><strong>Atualizações</strong><span id="updateVersion">v5.5.0</span></div>
         <p id="updateMessage" aria-live="polite">Verificando versão...</p>
         <div class="update-progress" id="updateProgressWrap" hidden><div id="updateProgressBar"></div></div>
         <div class="update-buttons"><button id="btnUpdate" class="update-action" type="button">Verificar</button><button id="btnReleases" class="icon-button" type="button" title="Abrir Releases oficiais" aria-label="Abrir Releases">Releases</button></div>
@@ -31,16 +31,14 @@
   <div class="workbench">
     <header class="topbar">
       <strong id="viewTitle">Código</strong>
-      <div class="top-controls">
-        
-        <button class="primary-button" id="btnRun" type="button"><span aria-hidden="true">▶</span> Analisar código</button>
-      </div>
+
     </header>
 
     <main class="main-area">
       <section id="view-code" class="studio-view" aria-label="Editor de código">
         <div class="surface code-panel">
           <div class="code-header">
+            <strong class="code-label">Código</strong>
             <div class="example-picker" id="examplePicker">
               <button class="example-trigger" id="btnExamples" type="button" aria-expanded="false" aria-controls="examplesMenu" aria-haspopup="true"><span id="selectedExample">Selecionar código</span><span aria-hidden="true">⌄</span></button>
               <div id="examplesMenu" class="example-menu" hidden><div class="menu-label">Exemplos de código</div><div id="examples" class="example-list"></div></div>
@@ -50,6 +48,7 @@
               <button id="btnNew" type="button" class="tool-button">Novo texto</button>
               <button id="btnImport" type="button" class="tool-button">Importar arquivo</button>
               <button id="btnSave" type="button" class="tool-button prominent">Salvar</button>
+              <button class="primary-button" id="btnRun" type="button"><span aria-hidden="true">▶</span> Analisar código</button>
             </div>
           </div>
           <div class="editor" id="editorWrap">
@@ -86,7 +85,7 @@
               <span id="treeZoomLevel" aria-live="off">100%</span>
               <button id="treeZoomIn" type="button" aria-label="Aumentar zoom">+</button>
               <button id="treeExpand" type="button" hidden>Expandir todos</button>
-              <button id="treeExport" type="button">Exportar SVG</button>
+              
             </div>
           </div>
           <div class="tree-viewport" id="treeViewport" aria-label="Área interativa da árvore; arraste o fundo para mover, use a roda para ampliar ou reduzir" tabindex="0">
@@ -98,7 +97,7 @@
 
       <section id="view-static" class="studio-view" aria-label="Dados estáticos" hidden>
         <div class="surface static-panel">
-          <div class="static-heading"><strong>Resultados e referências</strong><button id="btnExport" type="button" class="tool-button">Exportar análise</button></div>
+          <div class="static-heading"><strong>Resultados e referências</strong><div class="export-actions"><button id="btnExportTokens" type="button" class="tool-button">Exportar tokens TXT</button><button id="btnExport" type="button" class="tool-button">Exportar análise TXT</button></div></div>
           <div class="analysis-tabs" role="tablist" aria-label="Informações da análise"><button data-static-tab="tokens" class="active" role="tab" aria-selected="true">Tokens</button><button data-static-tab="grammar" role="tab" aria-selected="false">Gramática</button><button data-static-tab="errors" role="tab" aria-selected="false">Erros <span id="errorTabCount"></span></button></div>
           <div id="staticContent" class="content-area" role="tabpanel"></div>
         </div>

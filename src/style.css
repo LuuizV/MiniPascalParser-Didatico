@@ -229,21 +229,21 @@ button:hover:not(:disabled){filter:brightness(1.15)}
   background:#0f1928;
   overflow:hidden}
 .line-numbers{flex:none;
-  width:60px;
-  text-align:right;
-  padding:18px 13px 24px 0;
+  width:56px;
+  text-align:center;
+  padding:18px 0 25px;
   overflow:hidden;
   white-space:pre;
   color:#8190a8;
   background:#121d2e;
   border-right:1px solid #27374d;
-  font:16px/1.65 Consolas,'Cascadia Code',monospace;
+  font:16px/27px Consolas,'Cascadia Code',monospace;
   user-select:none}
-.line-numbers span{display:block}
+.line-numbers span{display:block;min-height:27px;height:27px}
 .line-active{background:#343154;
   border-radius:4px;
   color:#dfd1ff}
-.line-error{color:var(--danger)!important}
+.line-error{color:#ff757d!important;background:rgba(150,45,58,.24);font-weight:750}
 .editor-layer{flex:1;
   min-width:0;
   position:relative;
@@ -255,7 +255,7 @@ button:hover:not(:disabled){filter:brightness(1.15)}
   white-space:pre;
   tab-size:2;
   border:0;
-  line-height:1.7;
+  line-height:27px;
   font-family:Consolas,'Cascadia Code',monospace;
   font-size:16px;
   letter-spacing:0}
@@ -620,4 +620,27 @@ button:hover:not(:disabled){filter:brightness(1.15)}
   .nav-item{justify-content:flex-start;padding:9px 10px;min-height:47px;white-space:normal}
   .nav-icon{width:21px;flex:none}
   .navigation{width:100%}
+}
+
+/* Layout do editor: a numeração e o texto compartilham a mesma altura de linha. */
+body.code-mode .topbar{display:none}
+body.code-mode .main-area{padding-top:13px}
+.code-label{font-size:1.04rem;white-space:nowrap}
+.code-header{justify-content:flex-start;min-height:65px;column-gap:13px}
+.code-header .example-picker{flex:0 1 285px;min-width:135px}
+.code-header .example-trigger{min-width:0;width:100%;max-width:none}
+.code-actions{margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
+.code-actions .primary-button{min-height:40px;padding:8px 13px}
+.export-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+#codeHighlight .error-token{background:rgba(238,68,91,.24);border-bottom:2px solid #ff667a;color:#ff9aa4}
+#codeHighlight .hit{background:rgba(133,97,230,.44)}
+@media(max-width:1120px){
+ .code-header{row-gap:8px;padding:10px 13px}
+ .code-actions{width:100%;margin-left:0;justify-content:flex-end}
+ .code-header .example-picker{flex:1;max-width:310px}
+}
+@media(max-width:780px){
+ .code-header .example-picker{max-width:none}
+ .export-actions{gap:5px}
+ .export-actions button{font-size:12px}
 }

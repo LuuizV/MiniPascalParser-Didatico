@@ -11,12 +11,11 @@
 const {app,BrowserWindow,ipcMain,dialog,shell}=require('electron');
 const fs=require('node:fs/promises');
 const path=require('node:path');
-const {Worker}=require('node:worker_threads');
-const {modelo}=require('./core.cjs');
+const {invokeJava}=require('./java-runner.cjs');
 const {createUpdateManager}=require('./update-manager.cjs');
 const MAX_SOURCE=500000;
 const base=path.join(__dirname,'..');
-let win=null,allowClose=false,currentWorker=null,workerSeq=0;
+let win=null,allowClose=false;
 const approvedPaths=new Set();
 function createWindow(){
   allowClose=false;
@@ -29,26 +28,8 @@ function createWindow(){
   win.on('close',event=>{if(!allowClose){event.preventDefault();win.webContents.send('request-close');}});
   win.on('closed',()=>{win=null;});
 }
-/**
- * Isolamento de carga: a análise anterior é substituída pela mais recente.
- * `workerSeq` impede que uma resposta atrasada sobrescreva o resultado atual.
- * Em qualquer saída (sucesso, erro ou timeout), a Worker é finalizada.
- */
-function workerAnalyze(source){
-  if(typeof source!=='string'||source.length>MAX_SOURCE)throw Error('O arquivo não pode ultrapassar 500.000 caracteres.');
-  // A segunda análise substitui a anterior. Uma resposta antiga não pode sobrescrever a atual.
-  if(currentWorker)currentWorker.terminate().catch(()=>{});
-  const job=++workerSeq;
-  return new Promise((resolve,reject)=>{
-    const worker=new Worker(path.join(__dirname,'analysis-worker.cjs'),{workerData:source});
-    currentWorker=worker;let settled=false;
-    const finish=(err,result)=>{if(settled)return;settled=true;clearTimeout(timeout);if(currentWorker===worker)currentWorker=null;worker.terminate().catch(()=>{});if(err)reject(err);else resolve(result);};
-    const timeout=setTimeout(()=>finish(Error('Análise excedeu o limite de 30 segundos. Tente um programa menor.')),30000);
-    worker.on('message',message=>{if(job!==workerSeq)return finish(Error('A análise anterior foi substituída.'));if(message.ok)finish(null,message.result);else finish(Error(message.error||'Falha na análise.'));});
-    worker.once('error',error=>finish(error));
-    worker.once('exit',code=>{if(!settled)finish(Error('Analisador interrompido ('+code+').'));});
-  });
-}
+// O processo Java roda fora do Electron e tem limite de tempo e de saída.
+function workerAnalyze(source){return invokeJava(app,'analyze',source);}
 /** Preferências locais mínimas: a velocidade do simulador.
  * Ignoramos a escala/fonte deixadas por versões antigas para impedir a
  * deformação observada no Windows após zoom global. */
@@ -69,7 +50,7 @@ app.whenReady().then(()=>{
   ipcMain.handle('update-install',()=>{allowClose=true;const result=updates.install();if(!result)allowClose=false;return result;});
   ipcMain.handle('update-open-releases',()=>shell.openExternal(updates.releaseUrl));
   ipcMain.handle('analyze',(_event,source)=>workerAnalyze(source));
-  ipcMain.handle('grammar',()=>modelo);
+  ipcMain.handle('grammar',()=>invokeJava(app,'grammar'));
   ipcMain.handle('settings-read',safeSettingsRead);
   ipcMain.handle('settings-save',(_event,data)=>safeSettingsWrite(data));
   ipcMain.handle('confirm-close',async()=>{
@@ -98,16 +79,15 @@ app.whenReady().then(()=>{
     await fs.writeFile(filename,data.content,'utf8');approvedPaths.add(filename);
     return {name:path.basename(filename),path:filename};
   });
-  ipcMain.handle('export-report',async(_event,report)=>{
-    if(typeof report!=='string'||report.length>5_000_000)throw Error('Relatório inválido.');
-    const d=await dialog.showSaveDialog(win,{title:'Exportar análise',defaultPath:'analise-minipascal.txt',filters:[{name:'Texto',extensions:['txt']}]});
-    if(d.canceled)return false;await fs.writeFile(d.filePath,report,'utf8');return true;
-  });
-  ipcMain.handle('export-tree',async(_event,svg)=>{
-    if(typeof svg!=='string'||svg.length>5_000_000||!svg.startsWith('<svg')||/<script|onload=|onerror=/i.test(svg))throw Error('SVG inválido.');
-    const result=await dialog.showSaveDialog(win,{title:'Exportar árvore de derivação',defaultPath:'arvore-minipascal.svg',filters:[{name:'Imagem vetorial SVG',extensions:['svg']}]});
-    if(result.canceled)return false;
-    await fs.writeFile(result.filePath,svg,'utf8');return true;
+  ipcMain.handle('export-report',async(_event,data)=>{
+    if(!data || !['tokens','analysis'].includes(data.kind) || typeof data.content!=='string' || data.content.length>5_000_000)
+      throw Error('Relatório inválido.');
+    const tokens=data.kind==='tokens';
+    const d=await dialog.showSaveDialog(win,{title:tokens?'Exportar tokens':'Exportar análise',
+      defaultPath:tokens?'tokens-minipascal.txt':'analise-minipascal.txt',
+      filters:[{name:'Texto',extensions:['txt']}]});
+    if(d.canceled)return false;
+    await fs.writeFile(d.filePath,data.content,'utf8');return true;
   });
   ipcMain.handle('samples',async()=>{
     const files=(await fs.readdir(path.join(base,'tests'))).filter(f=>/^teste[1-6]_.*\.txt$/.test(f)).sort();
