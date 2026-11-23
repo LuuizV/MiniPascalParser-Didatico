@@ -29,7 +29,7 @@
 - **Código mais bem explicado:** comentários extensos no Lexer, geração das tabelas SLR(1), execução do Parser, recuperação de erros, Worker Thread e construção da árvore.
 - **Regressão preservada:** nenhuma alteração na gramática Mini_Pascal ou nas decisões do Parser. **A implementação da Sigma solicitada no enunciado permanece pendente.**
 
-Consulte o [Plano Mestre v5.4.0](docs/PLANO-MESTRE-v5.4.0.md), o [guia do algoritmo SLR(1)](docs/COMENTARIOS-ALGORITMO.md) e o [Guia de uso](docs/GUIA-DE-USO.md).
+Consulte o [guia do algoritmo SLR(1)](docs/COMENTARIOS-ALGORITMO.md) e o [Guia de uso](docs/GUIA-DE-USO.md).
 
 ## Sobre o projeto
 
@@ -100,10 +100,6 @@ flowchart LR
 
 A implementação atual possui **71 produções**, **130 estados LR(0)** e mantém, nos seis arquivos de regressão sintática, o mesmo histórico de **611 ações SLR(1)** comparado com a versão Java. Esses valores são referências de testes, não propriedades universais de qualquer gramática.
 
-## Plano Mestre entre atualizações
-
-Antes de cada versão, aplicamos o [Plano Mestre de Atualizações](docs/PLANO-MESTRE.md): diagnóstico, correções prioritárias, testes, Release validada e registro das limitações. Releases só ficam visíveis após o manifesto e instaladores estarem presentes.
-
 ## Atualizações pelas Releases
 
 A partir da **v5.1.0**, o instalador NSIS pode consultar a **Release estável** publicada neste repositório. O usuário decide quando baixar e quando instalar; o aplicativo não substitui seus arquivos silenciosamente.
@@ -157,7 +153,6 @@ MiniPascalParser-Didatico/
 ├── tests/                    # Testes e programas da linguagem
 ├── docs/                     # Documentação técnica e acadêmica
 ├── .github/workflows/        # Integração contínua e Releases
-├── AGENTS.md                 # Regras de desenvolvimento
 └── package.json              # Dependências e distribuição
 ```
 

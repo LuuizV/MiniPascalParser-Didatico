@@ -33,7 +33,6 @@
 - Proteção do trabalho não salvo ao fechar; fluxo de salvar/descartar/cancelar.
 - Execução do Parser em Worker Thread, sem bloquear o loop de janelas; validação de arquivos e preferências.
 - Novos testes para árvore, helpers, explicações e Worker Thread. Suite de referência do SLR(1) preservada.
-- Regras de acumular solicitações entre versões e Plano Mestre v5.2.0 documentados.
 
 **Limitações conhecidas:** Instalação real/atualização no Windows ainda deve ser validada em computador Windows; árvore visual limitada em nós simultâneos; teste formal de acessibilidade ainda pendente.
 
@@ -46,7 +45,6 @@ Este documento registra as mudanças funcionais e técnicas do MiniPascal.
 - Correção do processo de publicação: release em rascunho até verificar `.exe`, `latest.yml`, `.blockmap` e SHA256.
 - Atualizador passa a tratar erro `latest.yml` 404 com até duas novas tentativas e mensagem amigável; nunca instala sem confirmação.
 - Novos testes de ausência temporária do manifesto e recuperação após publicação.
-- Instituído o [Plano Mestre](docs/PLANO-MESTRE.md), obrigatório antes de novas atualizações.
 - **Pendente de validação manual:** upgrade real entre dois instaladores no Windows.
 
 ## [5.1.1] — Interface simplificada e separação didática

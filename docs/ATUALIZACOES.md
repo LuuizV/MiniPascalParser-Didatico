@@ -14,8 +14,6 @@ As Releases são preparadas como **rascunho**, não visível ao `electron-update
 
 Se um aplicativo antigo recebeu `Cannot find latest.yml` e HTTP 404, clique em **Tentar novamente** após a Release terminar de publicar. Na v5.1.2, esse erro dá origem a duas novas tentativas automáticas com intervalo crescente, em vez de expor uma exceção técnica ao usuário. O Portable continua manual.
 
-Antes de iniciar outra versão, leia o [Plano Mestre](PLANO-MESTRE.md), registre os bloqueadores e siga seu checklist de aceite.
-
 ## Como publicar a próxima versão
 
 1. Atualize o campo `version` de `package.json` (por exemplo, `5.2.0`) e o [CHANGELOG](../CHANGELOG.md).
@@ -47,6 +45,3 @@ O projeto usa `electron-builder` com provider `github`, owner `LuuizV`, repo `Mi
 - O pipeline compila em Windows x64 e publica artefatos; **é necessária uma validação manual de instalação e atualização real no Windows** antes de considerar a funcionalidade verificada em produção.
 - Em caso de erro de rede, o usuário recebe uma mensagem e pode tentar novamente, sem bloquear o Lexer ou o Parser.
 
-## Política de mudanças acumuladas
-
-Não publicar commits ou Releases por pedido isolado. Reunir solicitações, revisar o [Plano Mestre](PLANO-MESTRE.md) e autorizar explicitamente a implementação consolidada. A versão v5.2.0 mantém a publicação como rascunho até a validação do `latest.yml`, blockmap e dos executáveis.
